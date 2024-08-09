@@ -33,16 +33,16 @@ inputs.nixpkgs.lib.nixosSystem {
     ./modules/hyprland.nix
 
     # Hardware 
+    ./hardware/generated.nix
     ./hardware/filesystem.nix
     ./hardware/graphics.nix
-    ./hardware/generated.nix
 
     # OS 
-    ./os/audio.nix
     ./os/boot.nix
-    ./os/fonts.nix
     ./os/locale.nix
+    ./os/fonts.nix
     ./os/networking.nix
+    ./os/audio.nix
     ./os/users.nix
   ] 
   ++ apps

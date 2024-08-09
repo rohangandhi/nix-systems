@@ -15,8 +15,7 @@
     nixosConfigurations.zion-alpha = import ./alpha/system.nix {
       inherit inputs;
       desktop = [
-        ./common/desktop/hyprland.nix
-        ./common/desktop/stylix.nix
+        ./common/desktop/hyprland/hyprland.nix
       ];
       apps = [
         # Browser

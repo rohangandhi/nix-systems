@@ -5,7 +5,7 @@
   services.greetd.enable = true;
   services.greetd.settings.initial_session = {
     command = "Hyprland";
-    user = "ephemeral";
+    user = "${my-options.user.name}";
   };
   services.greetd.settings.default_session = {
     command = ''
@@ -28,10 +28,11 @@
 
   home-manager.users.${my-options.user.name} = { config, my-options, ... }: {
     imports = [
-      ./hyprland/hyprpaper.nix
-      ./hyprland/hyprlock.nix
-      ./hyprland/waybar.nix
-      ./hyprland/rofi.nix
+      ./stylix.nix
+      ./hyprpaper.nix
+      ./hyprlock.nix
+      ./waybar.nix
+      ./rofi.nix
     ];
 
     wayland.windowManager.hyprland.enable = true;
