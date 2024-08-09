@@ -1,4 +1,4 @@
-{ inputs, apps, desktop, ... }:
+{ inputs, apps, desktop, system-name, ... }:
 
 inputs.nixpkgs.lib.nixosSystem {
   system = "x86_64-linux";
@@ -6,7 +6,7 @@ inputs.nixpkgs.lib.nixosSystem {
   specialArgs = {
     inputs = inputs;
     my-options = {
-      name = "zion-alpha";
+      name = "${system-name}";
       display = {
         scaling = "2";
       };

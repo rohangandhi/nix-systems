@@ -12,8 +12,9 @@
 
   outputs = { ... } @inputs: {
 
-    nixosConfigurations.zion-alpha = import ./alpha/system.nix {
+    nixosConfigurations.zion-alpha = import ./zion/system.nix {
       inherit inputs;
+      system-name = "zion-alpha";
       desktop = [
         ./common/desktop/hyprland/hyprland.nix
       ];
