@@ -1,7 +1,7 @@
-{ config, ... }: {
+{ my-options, ... }: {
   programs.tmux.enable = true;
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     programs.tmux.enable = true;
     programs.tmux.package = pkgs.tmux;
 

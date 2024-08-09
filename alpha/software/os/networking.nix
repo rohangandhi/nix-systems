@@ -1,6 +1,6 @@
-{ config, ... }: {
+{ config, my-options, ... }: {
   networking.networkmanager.enable = true;
-  networking.hostName = config.my-options.name;
+  networking.hostName = my-options.name;
 
   # Bluetooth
   hardware.bluetooth.enable = true;

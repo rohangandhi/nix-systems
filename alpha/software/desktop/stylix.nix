@@ -1,6 +1,6 @@
-{ config, ... }: {
+{ my-options, ... }: {
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     xdg.configFile."wallpapers/wallpaper.png".source = ./wallpaper.png;
     stylix.image = ./wallpaper.png;
 

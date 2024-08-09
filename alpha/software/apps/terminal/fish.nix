@@ -1,8 +1,8 @@
-{ config, ... }: {
+{ my-options, ... }: {
 
   programs.fish.enable = true;
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     stylix.targets.fish.enable = false;
     xdg.desktopEntries.fish.name = "fish";
     xdg.desktopEntries.fish.exec = "fish";

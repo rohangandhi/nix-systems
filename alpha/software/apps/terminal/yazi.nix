@@ -1,6 +1,6 @@
-{ config, ... }: {
+{ my-options, ... }: {
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     programs.yazi.enable = true;
     programs.yazi.settings = {
       log = {

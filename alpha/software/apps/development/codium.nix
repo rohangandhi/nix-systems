@@ -1,4 +1,4 @@
-{ config, ... }: {
+{ my-options, ... }: {
 
   # TODO: use vscode in docker.
 
@@ -17,7 +17,7 @@
   #   -v "$PWD:/home/workspace:z" \
   #   docker.io/gitpod/openvscode-server
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
 
     # stylix.targets.vscode.enable = false;
     programs.vscode.enable = true;

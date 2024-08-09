@@ -1,6 +1,6 @@
-{ config, ... }: {
+{ my-options, ... }: {
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     programs.fastfetch.enable = true;
     programs.fastfetch.package = pkgs.fastfetch;
     programs.fastfetch.settings = {

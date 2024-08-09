@@ -1,4 +1,4 @@
-{ config, ... }: {
+{ my-options, ... }: {
 
   environment.shellAliases = {
     gs = "git status";
@@ -6,7 +6,7 @@
     du = "du -ahx -d 1 | sort -h -r";
   };
 
-  home-manager.users.${config.my-options.user.name} = { pkgs, ... }: {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     programs.bat.enable = true;
     programs.bat.package = pkgs.bat;
     home.shellAliases.cat = "bat -n";
