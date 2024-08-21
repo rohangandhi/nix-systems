@@ -7,13 +7,13 @@
     };
 
     "/boot" = {
-      device = "/dev/disk/by-uuid/7822-E0D1";
+      device = "/dev/disk/by-uuid/BFE4-67CD";
       fsType = "vfat";
       options = [ "umask=0077" ];
     };
 
     "/p-os" = {
-      device = "/dev/disk/by-uuid/87015a73-78f0-44c9-9029-8e818a096a8a";
+      device = "/dev/disk/by-uuid/99c7cd9b-d176-4601-ba5c-3fc697372082";
       fsType = "ext4";
       neededForBoot = true;
     };
@@ -26,7 +26,7 @@
     };
 
     "/p-home" = {
-      device = "/dev/disk/by-uuid/f33685db-6c45-4549-9659-09b3668a90bf";
+      device = "/dev/disk/by-uuid/f23bd0f5-b290-41e2-9ffa-6dcf07095e0e";
       fsType = "ext4";
       options = [ "user" "exec" "suid" "dev" ];
       neededForBoot = true;
@@ -54,14 +54,15 @@
         options = [ "${automount_opts},uid=${uid},gid=${gid}" ];
       };
 
-    "/p-games" = {
-      device = "/dev/disk/by-uuid/29e3b270-b6cb-40bb-9f1a-d4fa489bc765";
-      fsType = "ext4";
-      options = [ "user" "exec" "suid" "dev" ];
-      neededForBoot = true;
-    };
-
   };
+
+
+  boot.initrd.luks.devices."decrypted" = 
+    {
+      device = "/dev/disk/by-uuid/0d2f2be9-1440-4558-8536-162d3e0c548c";
+      preLVM = true;
+      allowDiscards = true;
+    };
 
   environment.systemPackages = [
     pkgs.cifs-utils
