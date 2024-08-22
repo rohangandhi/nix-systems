@@ -8,6 +8,8 @@
     stylix.inputs.nixpkgs.follows = "nixpkgs";
     hyprland.url = "git+https://github.com/hyprwm/Hyprland?submodules=1";
     hyprland.inputs.nixpkgs.follows = "nixpkgs";
+    disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs";    
   };
 
   outputs = { ... } @inputs: {
@@ -21,7 +23,7 @@
       apps = [
         # Browser
         ./common/apps/browser/firefox.nix
-        ./common/apps/browser/chromium.nix
+        #./common/apps/browser/chromium.nix
 
         # Terminal
         ./common/apps/terminal/fastfetch.nix
@@ -34,12 +36,12 @@
 
         # Development
         ./common/apps/development/codium.nix
-        ./common/apps/development/zed.nix
-        ./common/apps/development/emacs.nix
+        #./common/apps/development/zed.nix
+        #./common/apps/development/emacs.nix
 
         # Misc
-        ./common/apps/container.nix
-        ./common/apps/virt.nix
+        #./common/apps/container.nix
+        #./common/apps/virt.nix
         ./common/apps/git.nix
       ];
     };

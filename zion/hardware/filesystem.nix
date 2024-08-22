@@ -94,14 +94,5 @@
       files = [ ];
       allowOther = true;
     };
-
-    home.persistence."/p-games/${my-options.user.name}" = {
-      directories = [
-        ".local/share/Steam"
-      ];
-      files = [ ];
-      allowOther = true;
-    };
   };
-
 }

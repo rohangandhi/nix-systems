@@ -31,10 +31,12 @@ inputs.nixpkgs.lib.nixosSystem {
     ./modules/home-manager/impermanence.nix
     ./modules/home-manager/stylix.nix
     ./modules/hyprland.nix
+    ./modules/disko.nix
 
     # Hardware 
     ./hardware/generated.nix
-    ./hardware/filesystem.nix
+#    ./hardware/filesystem.nix
+    ./hardware/disk-system.nix
     ./hardware/graphics.nix
 
     # OS 

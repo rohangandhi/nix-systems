@@ -9,6 +9,7 @@
     hashedPassword = "$y$j9T$2VcEzSMw3HPEsVj2Mz26N.$l0NnWMz7UOk06b0FdxAZkItn9mscH1mjvFkQ16NOpG3"; # generated usin mkpasswd
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     isNormalUser = true;
+    createHome = true;
     shell = pkgs.fish;
   };
 }
