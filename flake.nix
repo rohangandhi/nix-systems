@@ -18,7 +18,8 @@
       inherit inputs;
       system-name = "zion-alpha";
       desktop = [
-        ./common/desktop/hyprland/hyprland.nix
+        #./common/desktop/hyprland/hyprland.nix
+        ./common/desktop/gnome.nix
       ];
       apps = [
         # Browser

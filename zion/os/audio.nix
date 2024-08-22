@@ -1,5 +1,6 @@
 { pkgs, ... }: {
 
+  hardware.pulseaudio.enable = false;
   security.rtkit.enable = true; # realtime-kit for audio
   services.pipewire.enable = true;
   services.pipewire.alsa.enable = true;
