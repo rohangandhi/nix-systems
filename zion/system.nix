@@ -35,8 +35,7 @@ inputs.nixpkgs.lib.nixosSystem {
 
     # Hardware 
     ./hardware/generated.nix
-#    ./hardware/filesystem.nix
-    ./hardware/disk-system.nix
+    ./hardware/filesystem.nix
     ./hardware/graphics.nix
 
     # OS 

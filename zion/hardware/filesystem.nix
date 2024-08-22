@@ -1,20 +1,77 @@
 { pkgs, my-options, ... }: {
-  fileSystems = {
-    "/" = {
-      device = "none";
+
+  disko.devices = {
+    disk.main = {
+        device = "/dev/disk/by-id/nvme-Samsung_SSD_990_EVO_1TB_S7M3NS0X118132L_1";
+        type = "disk";
+        
+        content = {
+          type = "gpt";
+          partitions.ESP = {
+            size = "1G";
+            type = "EF00";
+            content = {
+              type = "filesystem";
+              format = "vfat";
+              mountpoint = "/boot";
+              mountOptions = [ "umask=0077" ];
+            };
+          };
+          partitions.luks = {
+            size = "100%";
+            content = {
+              type = "luks";
+              name = "decrypted";
+              askPassword = true;
+              settings = {
+                allowDiscards = true;
+              };
+              content = {
+                type = "lvm_pv";
+                vg = "zion";
+              };
+            };
+          };
+        };
+
+    };
+    lvm_vg.zion = {
+        type = "lvm_vg";
+        lvs.os = {
+          size = "250G";
+          content = {
+            type = "filesystem";
+            format = "ext4";
+            mountpoint = "/p-os";
+            mountOptions = [ "defaults" ];
+          };
+        };
+        lvs.home = {
+          size = "50G";
+          content = {
+            type = "filesystem";
+            format = "ext4";
+            mountpoint = "/p-home";
+            mountOptions = [ "user" "exec" "suid" "dev" ];
+          };
+        };
+    };
+    nodev."/" = {
       fsType = "tmpfs";
-      options = [ "defaults" "size=4G" "mode=755" ];
+      mountOptions = [
+        "size=4G"
+        "defaults"
+        "mode=755"
+      ];
     };
+  };
 
-    "/boot" = {
-      device = "/dev/disk/by-uuid/BFE4-67CD";
-      fsType = "vfat";
-      options = [ "umask=0077" ];
+
+  fileSystems = {
+    "/p-home" = {
+      neededForBoot = true;
     };
-
     "/p-os" = {
-      device = "/dev/disk/by-uuid/99c7cd9b-d176-4601-ba5c-3fc697372082";
-      fsType = "ext4";
       neededForBoot = true;
     };
     "/nix" = {
@@ -25,12 +82,6 @@
       neededForBoot = true;
     };
 
-    "/p-home" = {
-      device = "/dev/disk/by-uuid/f23bd0f5-b290-41e2-9ffa-6dcf07095e0e";
-      fsType = "ext4";
-      options = [ "user" "exec" "suid" "dev" ];
-      neededForBoot = true;
-    };
     "/home/${my-options.user.name}" =
       let
         uid = "${builtins.toString my-options.user.uid}";
@@ -56,13 +107,6 @@
 
   };
 
-
-  boot.initrd.luks.devices."decrypted" = 
-    {
-      device = "/dev/disk/by-uuid/0d2f2be9-1440-4558-8536-162d3e0c548c";
-      preLVM = true;
-      allowDiscards = true;
-    };
 
   environment.systemPackages = [
     pkgs.cifs-utils
