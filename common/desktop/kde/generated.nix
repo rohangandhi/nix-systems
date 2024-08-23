@@ -237,7 +237,7 @@
       "kactivitymanagerdrc"."activities"."fea064a1-f530-444b-afc9-55b29a26597a" = "Default";
       "kactivitymanagerdrc"."main"."currentActivity" = "fea064a1-f530-444b-afc9-55b29a26597a";
       "kded5rc"."Module-device_automounter"."autoload" = false;
-      "kdeglobals"."KScreen"."ScreenScaleFactors" = "HDMI-A-1=1;";
+      "kdeglobals"."KScreen"."ScreenScaleFactors" = "HDMI-A-1=2;";
       "kdeglobals"."KScreen"."XwaylandClientsScale" = false;
       "kdeglobals"."WM"."activeBackground" = "49,54,59";
       "kdeglobals"."WM"."activeBlend" = "252,252,252";
