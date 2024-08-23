@@ -12,7 +12,7 @@ sudo mount --bind /mnt/p-os/nix /mnt/nix
 # Home directory does not get created since root is mounted on tempfs. So manually creating home. TODO
 sudo mkdir /mnt/p-home/ephemeral
 sudo mkdir -p /mnt/home/ephemeral
-sudo chown 1001:999 /mnt/p-home/ephemeral
+sudo chown 1000:999 /mnt/p-home/ephemeral
 sudo mount --bind /mnt/p-home/ephemeral /mnt/home/ephemeral
 
 # Install Nixos

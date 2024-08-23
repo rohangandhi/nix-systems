@@ -1,4 +1,4 @@
-{ inputs, apps, desktop, system-name, ... }:
+{ inputs, input-modules, apps, desktop, system-name, ... }:
 
 inputs.nixpkgs.lib.nixosSystem {
   system = "x86_64-linux";
@@ -12,7 +12,7 @@ inputs.nixpkgs.lib.nixosSystem {
       };
       user = {
         name = "ephemeral";
-        uid = 1001;
+        uid = 1000;
       };
       group = {
         name = "devs";
@@ -24,14 +24,6 @@ inputs.nixpkgs.lib.nixosSystem {
   modules = [
     ./options.nix # validations for my-options attribute set
     ./nix.nix # Nix related settings
-
-    # Input Modules
-    ./modules/impermanence.nix
-    ./modules/home-manager.nix
-    ./modules/home-manager/impermanence.nix
-    ./modules/home-manager/stylix.nix
-    ./modules/hyprland.nix
-    ./modules/disko.nix
 
     # Hardware 
     ./hardware/generated.nix
@@ -45,7 +37,8 @@ inputs.nixpkgs.lib.nixosSystem {
     ./os/networking.nix
     ./os/audio.nix
     ./os/users.nix
-  ] 
+  ]
+  ++ input-modules
   ++ apps
   ++ desktop;
 
