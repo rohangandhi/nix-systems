@@ -68,7 +68,7 @@
 
         # Misc
         #./common/apps/container.nix
-        #./common/apps/virt.nix
+        ./common/apps/virt.nix
         ./common/apps/git.nix
       ];
     };
