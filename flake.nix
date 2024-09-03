@@ -50,7 +50,7 @@
       apps = [
         # Browser
         ./common/apps/browser/firefox.nix
-        #./common/apps/browser/chromium.nix
+        ./common/apps/browser/chromium.nix
 
         # Terminal
         ./common/apps/terminal/fastfetch.nix
@@ -70,6 +70,9 @@
         #./common/apps/container.nix
         ./common/apps/virt.nix
         ./common/apps/git.nix
+        ./common/apps/slack.nix
+        ./common/apps/zoom.nix
+        ./common/apps/mpv.nix
       ];
     };
   };

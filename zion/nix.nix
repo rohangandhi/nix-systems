@@ -1,6 +1,7 @@
 { pkgs, my-options, ... }: {
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nixpkgs.config.allowUnfree = true; # until we can explicitly allow specific packages in each module.
   documentation.nixos.enable = false;
 
   environment.systemPackages = [
@@ -11,7 +12,6 @@
 
     pkgs.nix-index
   ];
-
 
   # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
   # and migrated your home accordingly.
