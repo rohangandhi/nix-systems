@@ -12,6 +12,10 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.device = "nodev";
 
+  # boot.initrd.systemd.enable = true;
+  # boot.plymouth.enable = true;
+  boot.kernelParams = ["quiet"]; # Pretty sure this one's optional.
+
   environment.systemPackages = [
     pkgs.refind # TODO: bundle refind installation into config
     pkgs.efibootmgr

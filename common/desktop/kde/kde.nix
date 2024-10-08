@@ -1,18 +1,23 @@
 { my-options, ... }: {
   services.xserver.enable = true;
   services.displayManager.sddm.enable = true;
-  services.desktopManager.plasma6.enable = true;
   services.displayManager.defaultSession = "plasma";
   services.displayManager.sddm.wayland.enable = true;
+  services.displayManager.autoLogin.enable = true;
+  services.displayManager.autoLogin.user = "${my-options.user.name}";
 
+  services.desktopManager.plasma6.enable = true;
+
+  programs.partition-manager.enable = true;
 
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
-    # nix run github:nix-community/plasma-manager
 
     imports = [
-      ./generated.nix
+      ./generated.nix # nix run github:nix-community/plasma-manager
     ];
+
     programs.plasma = {
+      kscreenlocker.timeout = 30;
       workspace = {
         lookAndFeel = "org.kde.breezedark.desktop";
         colorScheme = "BreezeDark";

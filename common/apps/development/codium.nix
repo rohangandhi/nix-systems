@@ -1,5 +1,20 @@
 { my-options, ... }: {
 
+  xdg.mime.defaultApplications = {
+    "text/plain" = "codium.desktop";
+    "text/x-c" = "codium.desktop";
+    "text/x-c++" = "codium.desktop";
+    "text/x-python" = "codium.desktop";
+    "text/x-java" = "codium.desktop";
+    "text/x-cmake" = "codium.desktop";
+    "text/markdown" = "codium.desktop";
+    "application/x-shellscript" = "codium.desktop";
+    "application/x-docbook+xml" = "codium.desktop";
+    "application/x-yaml" = "codium.desktop";
+    "application/json" = "codium.desktop";
+    "application/xml" = "codium.desktop";
+  };
+
   # TODO: use vscode in docker.
 
   # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-dockerTools

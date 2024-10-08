@@ -1,5 +1,15 @@
 { my-options, ... }: {
 
+  xdg.mime.defaultApplications = {
+    "x-scheme-handler/http" = "firefox.desktop";
+    "x-scheme-handler/https" = "firefox.desktop";
+    "x-scheme-handler/mailto" = "firefox.desktop";
+    "text/html" = "firefox.desktop";
+    "message/rfc822" = "firefox.desktop";
+    "application/xhtml+xml" = "firefox.desktop";
+    "application/x-extension-eml" = "firefox.desktop";
+  };
+
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     programs.firefox.enable = true;
     programs.firefox.package = pkgs.firefox;
@@ -28,8 +38,6 @@
 
       Permissions.Location.BlockNewRequests = true;
       Permissions.Notifications.BlockNewRequests = true;
-      # Permissions.Camera.BlockNewRequests = true;
-      # Permissions.Microphone.BlockNewRequests = true;
 
       /* ---- PREFERENCES ---- */
       # Check about:config for options.
@@ -67,9 +75,6 @@
           "extensions.formautofill.creditCards.available" = false;
           "extensions.formautofill.creditCards.enabled" = false;
           "extensions.formautofill.heuristics.enabled" = false;
-
-          # "extensions.pocket.enabled" = lock-false;
-          # "extensions.screenshots.disabled" = lock-true;
 
           "signon.rememberSignons" = false;
           "signon.autofillForms" = false;

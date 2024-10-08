@@ -134,6 +134,7 @@
         ".mozilla"
         ".ssh"
         "projects"
+        "virts"
       ];
       files = [ ];
       allowOther = true;
