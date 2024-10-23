@@ -73,6 +73,7 @@
         ./common/apps/slack.nix
         ./common/apps/zoom.nix
         ./common/apps/mpv.nix
+        ./common/apps/qalculate.nix
       ];
     };
   };
