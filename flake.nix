@@ -74,7 +74,7 @@
         ./common/apps/zoom.nix
         ./common/apps/mpv.nix
         ./common/apps/ticktick.nix
-        ./common/apps/ollama.nix
+        ./common/apps/jan.nix
         ./common/apps/qalculate.nix
       ];
     };

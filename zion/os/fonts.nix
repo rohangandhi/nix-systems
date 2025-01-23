@@ -1,8 +1,10 @@
 { pkgs, ... }: {
 
   fonts.packages = [
-    pkgs.terminus-nerdfont
     pkgs.jetbrains-mono
-    (pkgs.nerdfonts.override { fonts = [ "FiraCode" "DroidSansMono" "JetBrainsMono" "SourceCodePro" "Terminus" ]; })
+    pkgs.source-code-pro
+    pkgs.nerd-fonts.fira-code
+    pkgs.nerd-fonts.droid-sans-mono
+    pkgs.nerd-fonts.terminess-ttf
   ];
 }

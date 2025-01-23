@@ -8,7 +8,7 @@
         x = 20;
         y = 10;
       };
-      shell.program = "${pkgs.tmux}/bin/tmux";
+      terminal.shell.program = "${pkgs.tmux}/bin/tmux";
     };
   };
 }

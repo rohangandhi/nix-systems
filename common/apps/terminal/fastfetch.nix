@@ -12,7 +12,7 @@
       display = {
         separator = "";
         percent = {
-          type = "3";
+          type = 3;
         };
       };
       modules = [

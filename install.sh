@@ -1,3 +1,4 @@
+set -e
 # Run this from a Nixos live installer
 # Disk ID and system name are hard coded. TODO.
 

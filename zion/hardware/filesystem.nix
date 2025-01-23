@@ -135,10 +135,10 @@
         ".local/share/fish"
         ".config/VSCodium"
         ".ollama/models"
+        ".config/jan/data"
         ".mozilla"
         ".ssh"
-        "projects"
-        "virts"
+        "models"
       ];
       files = [ ];
       allowOther = true;
