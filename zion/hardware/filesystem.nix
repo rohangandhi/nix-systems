@@ -2,7 +2,10 @@
 
   disko.devices = {
     disk.main = {
-        device = "/dev/disk/by-id/nvme-Samsung_SSD_990_EVO_1TB_S7M3NS0X118132L_1";
+        #ls -l /dev/disk/by-id/
+        #lsblk -d -r|awk 'NR==1{print $0" DEVICE-ID(S)"}NR>1{dev=$1;printf $0" ";system("find /dev/disk/by-id -lname \"*"dev"\" -printf \" %p\"");print "";}'
+        device = "/dev/disk/by-id/nvme-Samsung_SSD_990_EVO_1TB_S7M3NS0X118132L_1"; # basement
+        #device = "/dev/disk/by-id/nvme-Samsung_SSD_990_EVO_1TB_S7M3NS0X118118W_1"; # living
         type = "disk";
         
         content = {
@@ -47,7 +50,7 @@
           };
         };
         lvs.home = {
-          size = "50G";
+          size = "500G";
           content = {
             type = "filesystem";
             format = "ext4";
@@ -131,6 +134,7 @@
         ".cache/nix-index"
         ".local/share/fish"
         ".config/VSCodium"
+        ".ollama/models"
         ".mozilla"
         ".ssh"
         "projects"
