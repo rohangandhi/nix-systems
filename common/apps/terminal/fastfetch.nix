@@ -111,24 +111,6 @@
           outputColor = "34";
         }
         "break"
-        {
-          type = "custom";
-          format = "┌───";
-          outputColor = "35";
-        }
-        {
-          type = "disk";
-          key = "├ 󰋊   Disk: ";
-          format = "{10} {9}  {1}  {2}";
-          keyColor = "35";
-          outputColor = "35";
-        }
-        {
-          type = "custom";
-          format = "└───";
-          outputColor = "35";
-        }
-        "break"
       ];
     };
   };

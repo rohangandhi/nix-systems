@@ -17,14 +17,19 @@
           date
           cal -3
           ${pkgs.fastfetch}/bin/fastfetch
+          ,df / ~ /p-home/ /p-os/
         end
       '';
-      lfcd.wraps = "lf";
-      lfcd.description = "lf - Terminal file manager (changing directory on exit)";
 
-      # `command` is needed when `lfcd` is aliased to `lf`.
-      # Quotes will cause `cd` to not change directory if `lf` prints nothing to stdout due to an error.
-      lfcd.body = ''cd "$(command lf -print-last-dir $argv)"'';
+      # cd using yazi
+      y = ''
+        set tmp (mktemp -t "yazi-cwd.XXXXXX")
+        yazi $argv --cwd-file="$tmp"
+        if set cwd (command cat -- "$tmp"); and [ -n "$cwd" ]; and [ "$cwd" != "$PWD" ]
+          builtin cd -- "$cwd"
+        end
+        rm -f -- "$tmp"
+      '';
     };
   };
 }

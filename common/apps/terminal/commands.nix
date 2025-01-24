@@ -3,7 +3,10 @@
   environment.shellAliases = {
     gs = "git status";
     gl = "git log --graph --pretty=format:'%Cred%h%Creset - %s %Cgreen(%ar) %C(bold blue)[%an]%Creset%C(yellow)%d%Creset' --abbrev-commit";
-    du = "du -ahx -d 1 | sort -h -r";
+    du = "du -ahx -d 1";
+        # df -hT / ~ /p-home/ /p-os/
+        # du -ahx -d 1 | sort -h -r
+
   };
 
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
@@ -15,9 +18,11 @@
     programs.eza.package = pkgs.eza;
     home.shellAliases.",ls" = "eza --long --all --group-directories-first --sort extension --icons --tree --level 1";
     home.shellAliases.",du" = "dust -w 80 -Bxr -d 1";
+    home.shellAliases.",df" = "duf";
 
     home.packages = [
       pkgs.du-dust
+      pkgs.duf
     ];
 
   };
