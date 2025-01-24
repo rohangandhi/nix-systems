@@ -246,6 +246,7 @@
       "kdeglobals"."WM"."inactiveBlend" = "161,169,177";
       "kdeglobals"."WM"."inactiveForeground" = "161,169,177";
       "kwalletrc"."Wallet"."First Use" = false;
+      "kwalletrc"."Wallet"."Enabled" = false;
       "kwinrc"."Desktops"."Id_1" = "89ac7147-276b-452d-af7c-bfc0da3cea00";
       "kwinrc"."Desktops"."Number" = 1;
       "kwinrc"."Desktops"."Rows" = 1;
