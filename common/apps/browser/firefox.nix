@@ -129,7 +129,10 @@
             "easylist-annoyances"
             "ublock-annoyances"
           ];
-          userFilters = "||accounts.google.com/gsi/*$xhr,script,3p\n||ogs.google.com/widget/callout";
+          userFilters = "||accounts.google.com/gsi/*$xhr,script,3p\n||ogs.google.com/widget/callout
+          \nwww.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(1)
+          \nwww.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(2)
+          \nwww.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(3)";
         };
       };
     };
