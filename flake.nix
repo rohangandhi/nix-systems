@@ -67,14 +67,16 @@
         #./common/apps/development/emacs.nix
 
         # Misc
-        #./common/apps/container.nix
+        ./common/apps/container.nix
         ./common/apps/virt.nix
         ./common/apps/git.nix
-        ./common/apps/slack.nix
+        # ./common/apps/slack.nix
         ./common/apps/zoom.nix
         ./common/apps/mpv.nix
         ./common/apps/ticktick.nix
-        ./common/apps/jan.nix
+        ./common/apps/llm.nix
+        ./common/apps/app-image.nix
+        ./common/apps/distrobox.nix
         ./common/apps/qalculate.nix
       ];
     };

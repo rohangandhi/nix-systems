@@ -17,7 +17,7 @@
           date
           cal -3
           ${pkgs.fastfetch}/bin/fastfetch
-          ,df / ~ /p-home/ /p-os/
+          ,df / ~ /p-os/ /p-home/ /p-data/
         end
       '';
 
