@@ -42,6 +42,9 @@
     programs.vscode.package = pkgs.vscodium;
     programs.vscode.extensions = [
       pkgs.vscode-extensions.jnoortheen.nix-ide
+      pkgs.vscode-extensions.ms-python.python
+      pkgs.vscode-extensions.ms-python.debugpy
+      pkgs.vscode-extensions.ms-toolsai.jupyter
     ];
 
     programs.vscode.userSettings = {
