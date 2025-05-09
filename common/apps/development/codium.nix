@@ -36,18 +36,28 @@
 
     # stylix.targets.vscode.enable = false;
     programs.vscode.enable = true;
-    programs.vscode.enableExtensionUpdateCheck = false;
-    programs.vscode.enableUpdateCheck = false;
     programs.vscode.mutableExtensionsDir = true;
     programs.vscode.package = pkgs.vscodium;
-    programs.vscode.extensions = [
+    programs.vscode.profiles.default.enableExtensionUpdateCheck = false;
+    programs.vscode.profiles.default.enableUpdateCheck = false;
+    programs.vscode.profiles.default.extensions = [
       pkgs.vscode-extensions.jnoortheen.nix-ide
       pkgs.vscode-extensions.ms-python.python
       pkgs.vscode-extensions.ms-python.debugpy
       pkgs.vscode-extensions.ms-toolsai.jupyter
+      pkgs.vscode-extensions.saoudrizwan.claude-dev
+      # pkgs.vscode-extensions.continue.continue
+      # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+      #   mktplcRef = {
+      #     publisher = "augment";
+      #     name      = "vscode-augment";
+      #     version   = "0.414.0";
+      #     sha256 = "pJC9es8ctLkTu66mXJx4eX4hi5KMuvIHCvxZsdgCBNM=";
+      #   };
+      # })
     ];
 
-    programs.vscode.userSettings = {
+    programs.vscode.profiles.default.userSettings = {
 
       workbench.colorTheme = "Default Dark Modern";
 

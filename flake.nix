@@ -35,7 +35,7 @@
       ./common/input-modules/home-manager/impermanence.nix
       ./common/input-modules/home-manager/stylix.nix
       ./common/input-modules/home-manager/plasma-manager.nix
-      ./common/input-modules/hyprland.nix      
+      ./common/input-modules/hyprland.nix
     ];
 
     nixosConfigurations.zion-alpha = import ./zion/system.nix {
@@ -63,7 +63,7 @@
 
         # Development
         ./common/apps/development/codium.nix
-        #./common/apps/development/zed.nix
+        ./common/apps/development/zed.nix
         #./common/apps/development/emacs.nix
 
         # Misc
@@ -74,7 +74,6 @@
         ./common/apps/zoom.nix
         ./common/apps/mpv.nix
         ./common/apps/ticktick.nix
-        ./common/apps/llm.nix
         ./common/apps/app-image.nix
         ./common/apps/distrobox.nix
         ./common/apps/qalculate.nix

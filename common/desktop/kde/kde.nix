@@ -26,7 +26,7 @@
       };
     };
 
-    # Cannot figure out how to scale using plasma-manager. 
+    # Cannot figure out how to scale using plasma-manager.
     # Possibly not supported, so manually scaling using kscreen-doctor.
     systemd.user.services.kscreen-scaling = {
       Install = {
