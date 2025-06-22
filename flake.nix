@@ -33,9 +33,9 @@
       ./common/input-modules/disko.nix
       ./common/input-modules/home-manager.nix
       ./common/input-modules/home-manager/impermanence.nix
-      ./common/input-modules/home-manager/stylix.nix
+      # ./common/input-modules/home-manager/stylix.nix
       ./common/input-modules/home-manager/plasma-manager.nix
-      ./common/input-modules/hyprland.nix
+      # ./common/input-modules/hyprland.nix
     ];
 
     nixosConfigurations.zion-alpha = import ./zion/system.nix {
@@ -68,14 +68,14 @@
 
         # Misc
         ./common/apps/container.nix
-        ./common/apps/virt.nix
+        # ./common/apps/virt.nix
         ./common/apps/git.nix
         # ./common/apps/slack.nix
-        ./common/apps/zoom.nix
-        ./common/apps/mpv.nix
-        ./common/apps/ticktick.nix
+        # ./common/apps/zoom.nix
+        # ./common/apps/mpv.nix
+        # ./common/apps/ticktick.nix
         ./common/apps/app-image.nix
-        ./common/apps/distrobox.nix
+        # ./common/apps/distrobox.nix
         ./common/apps/qalculate.nix
       ];
     };

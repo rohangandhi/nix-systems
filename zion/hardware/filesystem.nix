@@ -188,6 +188,9 @@
         ".local/share/fish"
         ".local/share/containers" # also see container.nix
         ".config/VSCodium"
+        ".config/zed"
+        ".lmstudio"
+        ".cursor"
         ".mozilla"
         ".ssh"
       ];

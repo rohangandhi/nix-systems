@@ -3,7 +3,7 @@
   programs.fish.enable = true;
 
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
-    stylix.targets.fish.enable = false;
+    # stylix.targets.fish.enable = false;
     xdg.desktopEntries.fish.name = "fish";
     xdg.desktopEntries.fish.exec = "fish";
     xdg.desktopEntries.fish.noDisplay = true;
