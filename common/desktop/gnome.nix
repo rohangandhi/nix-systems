@@ -10,5 +10,12 @@
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
     dconf.settings."org/gnome/desktop/interface".accent-color = "green";
 
+    # Pin favorite apps to the GNOME dock
+    dconf.settings."org/gnome/shell".favorite-apps = [
+      "firefox.desktop"
+      "org.gnome.Nautilus.desktop"
+      "alacritty.desktop"
+      "cursor.desktop"
+    ];
   };
 }
