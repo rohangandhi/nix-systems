@@ -34,7 +34,7 @@
       ./common/input-modules/home-manager.nix
       ./common/input-modules/home-manager/impermanence.nix
       # ./common/input-modules/home-manager/stylix.nix
-      ./common/input-modules/home-manager/plasma-manager.nix
+      # ./common/input-modules/home-manager/plasma-manager.nix
       # ./common/input-modules/hyprland.nix
     ];
 
@@ -44,8 +44,8 @@
       input-modules = self.input-modules;
       desktop = [
         #./common/desktop/hyprland/hyprland.nix
-        ./common/desktop/kde/kde.nix
-        #./common/desktop/gnome.nix
+        # ./common/desktop/kde/kde.nix
+        ./common/desktop/gnome.nix
       ];
       apps = [
         # Browser
@@ -59,11 +59,13 @@
         ./common/apps/terminal/fish.nix
         ./common/apps/terminal/starship.nix
         ./common/apps/terminal/commands.nix
-        ./common/apps/terminal/yazi.nix
+        # ./common/apps/terminal/yazi.nix
 
         # Development
         ./common/apps/development/codium.nix
-        ./common/apps/development/zed.nix
+        ./common/apps/development/cursor.nix
+
+        # ./common/apps/development/zed.nix
         #./common/apps/development/emacs.nix
 
         # Misc
