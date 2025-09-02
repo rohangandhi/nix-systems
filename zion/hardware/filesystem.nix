@@ -181,6 +181,12 @@
     ];
   };
 
+  # sudo fd \
+  # --one-file-system --base-directory /home/ephemeral \
+  # --changed-after 1h \
+  # --type f --hidden \
+  # --exclude "{.local/share,.mozilla,.cursor,.config/VSCodium,silly,.lmstudio,.cache}"
+
   home-manager.users.${my-options.user.name} = { my-options, ... }: {
     home.persistence."/p-home/${my-options.user.name}" = {
       directories = [
@@ -188,6 +194,7 @@
         ".local/share/fish"
         ".local/share/containers" # also see container.nix
         ".config/VSCodium"
+        ".config/Cursor"
         ".config/zed"
         ".lmstudio"
         ".cursor"

@@ -23,6 +23,8 @@
     home.packages = [
       pkgs.du-dust
       pkgs.duf
+      pkgs.fd
+      pkgs.jq
     ];
 
   };
