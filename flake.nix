@@ -63,6 +63,7 @@
 
         # Development
         ./common/apps/development/codium.nix
+        ./common/apps/development/vscode.nix
         ./common/apps/development/cursor.nix
 
         # ./common/apps/development/zed.nix

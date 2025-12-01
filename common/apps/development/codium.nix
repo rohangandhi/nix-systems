@@ -34,7 +34,6 @@
 
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
 
-    # stylix.targets.vscode.enable = false;
     programs.vscode.enable = true;
     programs.vscode.mutableExtensionsDir = true;
     programs.vscode.package = pkgs.vscodium;
@@ -47,14 +46,6 @@
       pkgs.vscode-extensions.ms-toolsai.jupyter
       pkgs.vscode-extensions.saoudrizwan.claude-dev
       # pkgs.vscode-extensions.continue.continue
-      # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
-      #   mktplcRef = {
-      #     publisher = "augment";
-      #     name      = "vscode-augment";
-      #     version   = "0.414.0";
-      #     sha256 = "pJC9es8ctLkTu66mXJx4eX4hi5KMuvIHCvxZsdgCBNM=";
-      #   };
-      # })
     ];
 
     programs.vscode.profiles.default.userSettings = {
@@ -79,9 +70,6 @@
             command = [ "nixpkgs-fmt" ];
           };
           options = {
-            # By default, this entry will be read from `import { }`.
-            # You can write arbitrary Nix expressions here, to produce valid "options" declaration result.
-            # Tip: for flake-based configuration, utilize `builtins.getFlake`
             nixos = {
               expr = "(builtins.getFlake \"/home/ephemeral/n-zion/nix/systems/zion/alpha\").nixosConfigurations..options";
             };

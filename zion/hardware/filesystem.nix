@@ -193,6 +193,7 @@
         ".cache/nix-index"
         ".local/share/fish"
         ".local/share/containers" # also see container.nix
+        ".config/Code"
         ".config/VSCodium"
         ".config/LM Studio"
         ".config/Cursor"
@@ -201,6 +202,7 @@
         ".cursor"
         ".mozilla"
         ".ssh"
+        ".vscode"
       ];
       files = [ ];
       allowOther = true;
