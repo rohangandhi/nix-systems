@@ -194,6 +194,7 @@
         ".local/share/fish"
         ".local/share/containers" # also see container.nix
         ".config/VSCodium"
+        ".config/LM Studio"
         ".config/Cursor"
         ".config/zed"
         ".lmstudio"

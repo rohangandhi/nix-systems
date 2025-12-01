@@ -21,7 +21,7 @@
     home.shellAliases.",df" = "duf";
 
     home.packages = [
-      pkgs.du-dust
+      pkgs.dust
       pkgs.duf
       pkgs.fd
       pkgs.jq
