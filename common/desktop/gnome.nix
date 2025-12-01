@@ -4,8 +4,8 @@
   services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;
 
-  services.xserver.displayManager.autoLogin.enable = true;
-  services.xserver.displayManager.autoLogin.user = "${my-options.user.name}";
+  services.displayManager.autoLogin.enable = true;
+  services.displayManager.autoLogin.user = "${my-options.user.name}";
   
   systemd.services."getty@tty1".enable = false;
   systemd.services."autovt@tty1".enable = false;
@@ -39,6 +39,10 @@
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
     dconf.settings."org/gnome/desktop/interface".accent-color = "green";
 
+    # Wallpaper from persistent directory
+    dconf.settings."org/gnome/desktop/background".picture-uri = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
+    dconf.settings."org/gnome/desktop/background".picture-uri-dark = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
+
     # Power management settings
     dconf.settings."org/gnome/settings-daemon/plugins/power".sleep-inactive-ac-timeout = 1800;  # 30 minutes suspend on AC power
     dconf.settings."org/gnome/settings-daemon/plugins/power".sleep-inactive-ac-type = "suspend";  # Suspend when inactive on AC
@@ -54,6 +58,8 @@
       "org.gnome.Nautilus.desktop"
       "Alacritty.desktop"
       "cursor.desktop"
+      "codium.desktop"
+      "code.desktop"
     ];
 
     # Scale display to 200% on login
