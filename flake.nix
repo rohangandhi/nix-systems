@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    impermanence.url = "github:nix-community/impermanence";
+    impermanence.url = "github:nix-community/impermanence/4b3e914cdf97a5b536a889e939fb2fd2b043a170";
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -32,7 +32,7 @@
       ./common/input-modules/impermanence.nix
       ./common/input-modules/disko.nix
       ./common/input-modules/home-manager.nix
-      # ./common/input-modules/home-manager/impermanence.nix
+      ./common/input-modules/home-manager/impermanence.nix
       # ./common/input-modules/home-manager/stylix.nix
       # ./common/input-modules/home-manager/plasma-manager.nix
       # ./common/input-modules/hyprland.nix
