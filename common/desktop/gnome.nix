@@ -21,6 +21,8 @@
     settings."org/gnome/desktop/interface".scaling-factor = lib.gvariant.mkUint32 2;
   }];
 
+  environment.sessionVariables.NIXOS_OZONE_WL = "1"; # force vs code and other electron stuff to use xwayland native scaling
+
   programs.dconf.profiles.user.databases = [
     {
       settings = {
@@ -30,6 +32,9 @@
             "variable-refresh-rate" # Enables Variable Refresh Rate (VRR) on compatible displays
             "xwayland-native-scaling" # Scales Xwayland applications to look crisp on HiDPI screens
           ];
+        };
+        "org/gnome/settings-daemon/plugins/housekeeping" = {
+          donation-reminder-enabled = false;
         };
       };
     }
@@ -60,7 +65,12 @@
       "cursor.desktop"
       "codium.desktop"
       "code.desktop"
+      "antigravity.desktop"
     ];
+
+    dconf.settings."org/gnome/shell/app-switcher" = {
+      current-workspace-only = true;
+    };
 
     # Scale display to 200% on login
     systemd.user.services.gnome-scaling = {
