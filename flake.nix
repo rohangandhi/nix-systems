@@ -32,7 +32,7 @@
       ./common/input-modules/impermanence.nix
       ./common/input-modules/disko.nix
       ./common/input-modules/home-manager.nix
-      ./common/input-modules/home-manager/impermanence.nix
+      # ./common/input-modules/home-manager/impermanence.nix
       # ./common/input-modules/home-manager/stylix.nix
       # ./common/input-modules/home-manager/plasma-manager.nix
       # ./common/input-modules/hyprland.nix

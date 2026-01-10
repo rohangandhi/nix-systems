@@ -208,7 +208,6 @@
         ".vscode"
       ];
       files = [ ];
-      allowOther = true;
     };
   };
 }
