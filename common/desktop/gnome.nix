@@ -21,8 +21,6 @@
     settings."org/gnome/desktop/interface".scaling-factor = lib.gvariant.mkUint32 2;
   }];
 
-  environment.sessionVariables.NIXOS_OZONE_WL = "1"; # force vs code and other electron stuff to use xwayland native scaling
-
   programs.dconf.profiles.user.databases = [
     {
       settings = {
