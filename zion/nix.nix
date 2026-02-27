@@ -6,7 +6,7 @@
 
   environment.systemPackages = [
     pkgs.nixpkgs-fmt
-    pkgs.nixfmt-rfc-style
+    pkgs.nixfmt
     pkgs.nil
     pkgs.nixd
 
