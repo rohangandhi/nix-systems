@@ -3,6 +3,7 @@
   services.displayManager.gdm.enable = true;
   services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;
+  services.gnome.gnome-keyring.enable = true;
 
   services.displayManager.autoLogin.enable = true;
   services.displayManager.autoLogin.user = "${my-options.user.name}";
@@ -14,7 +15,7 @@
   services.gnome.core-apps.enable = false;
   services.gnome.core-developer-tools.enable = false;
   services.gnome.games.enable = false;
-  environment.systemPackages = [ pkgs.gnome-console pkgs.nautilus ];
+  environment.systemPackages = [ pkgs.gnome-console pkgs.nautilus pkgs.gnome-keyring ];
   environment.gnome.excludePackages = [ pkgs.gnome-tour pkgs.gnome-user-docs ];
   
   programs.dconf.profiles.gdm.databases = [{
