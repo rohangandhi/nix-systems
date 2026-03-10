@@ -6,6 +6,10 @@
     proxyAddress = "127.0.0.1";
     proxyPort = 3128;
     extraConfig = ''
+      # Squid is currently failing upstream lookups with ERR_DNS_FAIL even
+      # though host resolution works interactively, so pin explicit resolvers.
+      dns_nameservers 1.1.1.1 8.8.8.8
+
       # Do not let the guest pivot back into the host or home network via the
       # proxy. The VM should only use this proxy for public internet access.
       acl private_dst dst 10.0.0.0/8

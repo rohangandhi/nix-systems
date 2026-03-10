@@ -91,6 +91,15 @@
     pkgs.curl
     pkgs.nodejs_22
     pkgs.bun
+    pkgs.tmux
+    pkgs.neovim
+    pkgs.fish
+    pkgs.eza
+    pkgs.duf
+    pkgs.dust
+    pkgs.fd
+    pkgs.jq
+    pkgs.bat
   ];
 
   # Keep npm globals user-writable with the standard NixOS npm module config.
