@@ -93,6 +93,16 @@
     pkgs.bun
   ];
 
+  # Keep npm globals user-writable with the standard NixOS npm module config.
+  programs.npm.enable = true;
+
+  environment.sessionVariables = {
+    PATH = [
+      "$HOME/.npm/bin"
+      "$HOME/.bun/bin"
+    ];
+  };
+
   # Guest state schema version. Keep fixed after first deployment unless you
   # intentionally migrate related state semantics.
   system.stateVersion = "24.11";

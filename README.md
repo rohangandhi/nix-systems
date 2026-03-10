@@ -64,6 +64,16 @@ Reuse a persistent disk between runs:
 NIX_DISK_IMAGE=/tmp/matrix-one-persistent.qcow2 matrix-one-vm
 ```
 
+Install Node/Bun CLI packages globally inside the VM:
+```bash
+npm install -g <package>
+bun install -g <package>
+```
+
+`matrix-one` configures npm globals under `~/.npm` and adds `~/.npm/bin` plus
+`~/.bun/bin` to `PATH` on login. Those installs persist when you reuse the
+same `NIX_DISK_IMAGE`.
+
 ## `matrix-one` isolation and dependency behavior
 - Host `/nix/store` is mounted read-only into the guest as `/nix/.ro-store`.
 - Guest `/nix/store` is an overlay:
