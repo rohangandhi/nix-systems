@@ -199,6 +199,7 @@
         ".config/Cursor"
         ".config/zed"
         ".config/Antigravity"
+        ".codex"
         ".antigravity"
         ".gemini"
         ".lmstudio"
