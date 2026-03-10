@@ -4,6 +4,10 @@
   # confusion when running commands across host and guest terminals.
   networking.hostName = "matrix-one";
 
+  # Route supported client traffic through the forwarded host proxy rather than
+  # giving the guest direct routed access to the host or LAN.
+  networking.proxy.default = "http://10.0.2.10:3128";
+
   # Keep user accounts declarative. This avoids agent/user drift in `/etc/passwd`
   # across VM runs and makes behavior reproducible.
   users.mutableUsers = false;
@@ -65,18 +69,28 @@
       };
 
       # Keep networking available so guest can fetch dependencies not already in
-      # the host store. Set to `true` if you later want offline/isolated mode.
-      restrictNetwork = false;
+      # the host store. The guest regains selected outbound access only through
+      # explicit forwarding rules like the proxy tunnel below.
+      restrictNetwork = true;
+
+      forwardPorts = [
+        {
+          from = "guest";
+          guest.address = "10.0.2.10";
+          guest.port = 3128;
+          host.address = "127.0.0.1";
+          host.port = 3128;
+        }
+      ];
     };
   };
 
   # Small baseline toolset in the guest for setup and diagnostics.
-  environment.systemPackages = with pkgs; [
-    cowsay
-    lolcat
-    git
-    curl
-    nodejs
+  environment.systemPackages = [
+    pkgs.git
+    pkgs.curl
+    pkgs.nodejs_22
+    pkgs.bun
   ];
 
   # Guest state schema version. Keep fixed after first deployment unless you

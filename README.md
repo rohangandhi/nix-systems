@@ -72,3 +72,9 @@ NIX_DISK_IMAGE=/tmp/matrix-one-persistent.qcow2 matrix-one-vm
 - Guest writes do not modify host `/nix/store`.
 - Guest-added Nix store paths are ephemeral by default (cleared when VM stops).
 - Default temporary host exchange mounts (`/tmp/shared`, `/tmp/xchg`) are disabled.
+
+## `matrix-one` network model
+- Guest direct access to the host and LAN is blocked with `virtualisation.restrictNetwork = true`.
+- HTTP/HTTPS client traffic is expected to use the forwarded host Squid proxy at `http://10.0.2.10:3128`.
+- The guest sets `networking.proxy.default = "http://10.0.2.10:3128"` so proxy-aware tools inherit that endpoint automatically.
+- Additional host services must be exposed explicitly with extra `virtualisation.forwardPorts` entries.

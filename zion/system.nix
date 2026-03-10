@@ -35,6 +35,7 @@ inputs.nixpkgs.lib.nixosSystem {
     ./os/locale.nix
     ./os/fonts.nix
     ./os/networking.nix
+    ./os/proxy.nix
     ./os/audio.nix
     ./os/users.nix
   ]
