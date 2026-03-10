@@ -66,6 +66,15 @@
           target = "/nix/.ro-store";
           securityModel = "none";
         };
+        host-ssh = {
+          # The host launcher populates this directory with an ephemeral
+          # per-user SSH keypair and an `authorized_keys` file. Keeping the
+          # source path runtime-configurable avoids baking host paths or key
+          # material into the flake.
+          source = ''"''${MATRIX_ONE_SSH_DIR:-$TMPDIR/matrix-one-ssh}"'';
+          target = "/mnt/host-ssh";
+          securityModel = "none";
+        };
       };
 
       # Keep networking available so guest can fetch dependencies not already in
@@ -74,6 +83,14 @@
       restrictNetwork = true;
 
       forwardPorts = [
+        {
+          # Expose guest SSH only on host loopback so the VM can be reached
+          # from the host terminal without opening it to the LAN.
+          from = "host";
+          host.address = "127.0.0.1";
+          host.port = 2222;
+          guest.port = 22;
+        }
         {
           from = "guest";
           guest.address = "10.0.2.10";
@@ -89,6 +106,7 @@
   environment.systemPackages = [
     pkgs.git
     pkgs.curl
+    pkgs.openssh
     pkgs.nodejs_22
     pkgs.bun
     pkgs.tmux
@@ -104,6 +122,21 @@
 
   # Keep npm globals user-writable with the standard NixOS npm module config.
   programs.npm.enable = true;
+
+  # Allow host terminals to attach to the guest over a localhost-only
+  # forwarded port using a host-managed development key.
+  networking.firewall.allowedTCPPorts = [ 22 ];
+
+  services.openssh = {
+    enable = true;
+    authorizedKeysInHomedir = lib.mkForce false;
+    authorizedKeysFiles = lib.mkForce [ "/mnt/host-ssh/authorized_keys" ];
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "no";
+    };
+  };
 
   environment.sessionVariables = {
     PATH = [
