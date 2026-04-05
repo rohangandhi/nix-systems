@@ -67,6 +67,7 @@
           ./common/apps/development/vscode.nix
           ./common/apps/development/cursor.nix
           ./common/apps/development/antigravity.nix
+          ./common/apps/development/kiro.nix
 
           # ./common/apps/development/zed.nix
           #./common/apps/development/emacs.nix
