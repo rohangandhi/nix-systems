@@ -35,6 +35,11 @@
   # VM-only runtime settings. These are applied when using `system.build.vm`
   # (run-matrix-one-vm), not to a physical machine install.
   virtualisation.vmVariant = {
+    # The VM uses an explicit TCP host forward for SSH. Disable systemd's
+    # automatic AF_VSOCK/AF_UNIX SSH socket generation to avoid noisy boot
+    # probes for VSOCK support on the serial console.
+    boot.kernelParams = [ "systemd.ssh_auto=no" ];
+
     virtualisation = {
       # Mount host `/nix/store` into guest as `/nix/.ro-store`.
       # This lets the VM reuse already-downloaded host dependencies with zero
@@ -67,11 +72,10 @@
           securityModel = "none";
         };
         host-ssh = {
-          # The host launcher populates this directory with an ephemeral
-          # per-user SSH keypair and an `authorized_keys` file. Keeping the
-          # source path runtime-configurable avoids baking host paths or key
-          # material into the flake.
-          source = ''"''${MATRIX_ONE_SSH_DIR:-$TMPDIR/matrix-one-ssh}"'';
+          # The host launcher shares only public auth material with the guest.
+          # The corresponding private key remains host-local in a separate
+          # directory so the guest cannot read or reuse it.
+          source = ''"''${MATRIX_ONE_SSH_AUTH_DIR:-$TMPDIR/matrix-one-ssh-auth}"'';
           target = "/mnt/host-ssh";
           securityModel = "none";
         };
@@ -107,10 +111,12 @@
     pkgs.git
     pkgs.curl
     pkgs.openssh
+    pkgs.waypipe
     pkgs.nodejs_22
     pkgs.bun
     pkgs.tmux
-    pkgs.neovim
+    pkgs.alacritty
+    pkgs.emacs30-pgtk
     pkgs.fish
     pkgs.eza
     pkgs.duf
