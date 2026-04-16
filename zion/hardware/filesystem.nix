@@ -121,6 +121,39 @@
       depends = [ "/p-os" ];
       neededForBoot = true;
     };
+    
+    ############################################################
+    # TODO: Impermanence pinned to home-manager-v1 branch. Need to migrate to new API.
+    # environment.persistence bind mounts: impermanence omits fsType; nixpkgs requires it for boot.supportedFilesystems.
+    "/etc/NetworkManager/system-connections" = {
+      device = "/p-os/etc/NetworkManager/system-connections";
+      fsType = "none";
+      options = [ "bind" ];
+      depends = [ "/p-os" ];
+      neededForBoot = true;
+    };
+    "/var/log" = {
+      device = "/p-os/var/log";
+      fsType = "none";
+      options = [ "bind" ];
+      depends = [ "/p-os" ];
+      neededForBoot = true;
+    };
+    "/var/lib/nixos" = {
+      device = "/p-os/var/lib/nixos";
+      fsType = "none";
+      options = [ "bind" ];
+      depends = [ "/p-os" ];
+      neededForBoot = true;
+    };
+    "/var/lib/systemd/coredump" = {
+      device = "/p-os/var/lib/systemd/coredump";
+      fsType = "none";
+      options = [ "bind" ];
+      depends = [ "/p-os" ];
+      neededForBoot = true;
+    };
+    ############################################################
 
     # Home Setup
     "/p-home" = {
@@ -174,6 +207,7 @@
   environment.persistence."/p-os" = {
     hideMounts = true;
     directories = [
+      # "/var/tmp"
       "/var/log"
       "/var/lib/nixos"
       "/var/lib/systemd/coredump"
@@ -190,6 +224,8 @@
   home-manager.users.${my-options.user.name} = { my-options, ... }: {
     home.persistence."/p-home/${my-options.user.name}" = {
       directories = [
+        # ".cache" # find a better way to allocate storage for this (frequently used by apps running into limites of storage on RAM disk)
+        ".cache/uv"
         ".cache/nix-index"
         ".local/share/fish"
         ".local/share/containers" # also see container.nix
