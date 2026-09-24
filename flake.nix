@@ -56,6 +56,9 @@
         ./zion/os/proxy.nix
 
         # Desktop
+        ./common/theme/options.nix
+        # Set to null for native colors, or "nord" for the alternative palette.
+        { my-theme.palette = "midnight-jade"; }
         ./common/desktop/gnome.nix
 
         # Browser
@@ -92,6 +95,7 @@
     nixosModules.default = {
       imports = [
         ./zion/options.nix
+        ./common/theme/options.nix
         ./zion/nix.nix
         ./zion/os/fonts.nix
         ./zion/os/networking.nix
@@ -106,6 +110,7 @@
     nixosModules.workstation = {
       imports = [
         ./zion/options.nix
+        ./common/theme/options.nix
         ./zion/nix.nix
         ./zion/os/fonts.nix
         ./zion/os/networking.nix
@@ -136,7 +141,9 @@
         ./common/apps/qalculate.nix
       ];
     };
-    nixosModules.gnome = ./common/desktop/gnome.nix;
+    nixosModules.gnome = {
+      imports = [ ./common/theme/options.nix ./common/desktop/gnome.nix ];
+    };
     nixosModules.proxy = ./zion/os/proxy.nix;
     nixosModules.matrix-one = ./matrix/one/configuration.nix;
     nixosModules.matrix-commands = ./matrix/one/commands.nix;

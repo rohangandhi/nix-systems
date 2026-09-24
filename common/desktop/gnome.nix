@@ -1,4 +1,9 @@
-{ my-options, lib, pkgs, ... }: {
+{ config, my-options, lib, pkgs, ... }:
+let
+  theme = config.my-theme;
+  palette = theme.colors;
+  colors = builtins.mapAttrs (_: hex: "#${hex}") palette;
+in {
 
   services.displayManager.gdm.enable = true;
   # services.displayManager.gdm.wayland = true;
@@ -37,9 +42,93 @@
     }
   ];
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
+    gtk = lib.mkIf theme.enabled {
+      enable = true;
+      gtk2.enable = false;
+      gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
+      # Color overrides only; Adwaita still supplies fonts and widget geometry.
+      gtk3.extraCss = ''
+        @define-color theme_bg_color ${colors.background};
+        @define-color theme_fg_color ${colors.foreground};
+        @define-color theme_base_color ${colors.background};
+        @define-color theme_text_color ${colors.foreground};
+        @define-color theme_selected_bg_color ${colors.selection};
+        @define-color theme_selected_fg_color ${colors.foreground};
+        @define-color theme_unfocused_bg_color ${colors.background};
+        @define-color theme_unfocused_fg_color ${colors.muted};
+        @define-color theme_unfocused_base_color ${colors.background};
+        @define-color theme_unfocused_text_color ${colors.foreground};
+        @define-color theme_unfocused_selected_bg_color ${colors.selection};
+        @define-color theme_unfocused_selected_fg_color ${colors.foreground};
+        @define-color borders ${colors.black};
+        @define-color warning_color ${colors.yellow};
+        @define-color error_color ${colors.red};
+        @define-color success_color ${colors.green};
+
+        .background, .view, textview text, entry {
+          background-color: ${colors.background};
+          color: ${colors.foreground};
+        }
+        headerbar, headerbar:backdrop, .sidebar, popover, menu {
+          background-image: none;
+          background-color: ${colors.surface};
+          color: ${colors.foreground};
+        }
+        selection, row:selected {
+          background-color: ${colors.selection};
+          color: ${colors.foreground};
+        }
+        button.suggested-action {
+          background-image: none;
+          background-color: ${colors.accent};
+          color: ${colors.background};
+        }
+      '';
+      # Libadwaita's named CSS variables cover current GNOME applications.
+      gtk4.extraCss = ''
+        :root {
+          --accent-bg-color: ${colors.accent};
+          --accent-fg-color: ${colors.background};
+          --accent-color: ${colors.accent};
+          --window-bg-color: ${colors.background};
+          --window-fg-color: ${colors.foreground};
+          --view-bg-color: ${colors.background};
+          --view-fg-color: ${colors.foreground};
+          --headerbar-bg-color: ${colors.surface};
+          --headerbar-fg-color: ${colors.foreground};
+          --headerbar-backdrop-color: ${colors.surface};
+          --headerbar-border-color: ${colors.black};
+          --sidebar-bg-color: ${colors.surface};
+          --sidebar-fg-color: ${colors.foreground};
+          --sidebar-backdrop-color: ${colors.surface};
+          --secondary-sidebar-bg-color: ${colors.surface};
+          --secondary-sidebar-fg-color: ${colors.foreground};
+          --secondary-sidebar-backdrop-color: ${colors.surface};
+          --card-bg-color: ${colors.surface};
+          --card-fg-color: ${colors.foreground};
+          --dialog-bg-color: ${colors.surface};
+          --dialog-fg-color: ${colors.foreground};
+          --popover-bg-color: ${colors.surface};
+          --popover-fg-color: ${colors.foreground};
+          --destructive-bg-color: ${colors.red};
+          --destructive-fg-color: ${colors.background};
+          --destructive-color: ${colors.red};
+          --error-bg-color: ${colors.red};
+          --error-fg-color: ${colors.background};
+          --error-color: ${colors.red};
+          --warning-bg-color: ${colors.yellow};
+          --warning-fg-color: ${colors.background};
+          --warning-color: ${colors.yellow};
+          --success-bg-color: ${colors.green};
+          --success-fg-color: ${colors.background};
+          --success-color: ${colors.green};
+        }
+      '';
+    };
     dconf.enable = true;
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
-    dconf.settings."org/gnome/desktop/interface".accent-color = "green";
+    # GNOME Shell accepts named accents, not arbitrary RGB palette colors.
+    dconf.settings."org/gnome/desktop/interface".accent-color = lib.mkIf theme.enabled theme.gnomeAccent;
     dconf.settings."org/gnome/desktop/background".picture-uri = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
     dconf.settings."org/gnome/desktop/background".picture-uri-dark = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
 

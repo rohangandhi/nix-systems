@@ -221,7 +221,21 @@
   # --type f --hidden \
   # --exclude "{.local/share,.mozilla,.cursor,.config/VSCodium,.lmstudio,.cache}"
 
-  home-manager.users.${my-options.user.name} = { my-options, ... }: {
+  home-manager.users.${my-options.user.name} = { lib, my-options, ... }: {
+    # Fish needs an existing target for its atomic universal-variable writes.
+    # Preserve any current settings before Home Manager replaces the local file.
+    home.activation.persistFishVariables = lib.hm.dag.entryBetween
+      [ "linkGeneration" ] [ "writeBoundary" ] ''
+        fish_state_path="/p-home/${my-options.user.name}/.config/fish/fish_variables"
+        if [[ ! -e "$fish_state_path" ]]; then
+          if [[ -f "$HOME/.config/fish/fish_variables" ]]; then
+            run ${pkgs.coreutils}/bin/install -D -m 600 "$HOME/.config/fish/fish_variables" "$fish_state_path"
+          else
+            run ${pkgs.coreutils}/bin/install -D -m 600 /dev/null "$fish_state_path"
+          fi
+        fi
+      '';
+
     home.persistence."/p-home/${my-options.user.name}" = {
       directories = [
         # ".cache" # find a better way to allocate storage for this (frequently used by apps running into limites of storage on RAM disk)
@@ -252,7 +266,7 @@
         ".config/zed"
         ".local/share/zed"
       ];
-      files = [ ];
+      files = [ ".config/fish/fish_variables" ];
       allowOther = true;
     };
   };
