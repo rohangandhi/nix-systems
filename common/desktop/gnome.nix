@@ -58,10 +58,7 @@
       "firefox.desktop"
       "org.gnome.Nautilus.desktop"
       "Alacritty.desktop"
-      "cursor.desktop"
       "codium.desktop"
-      "code.desktop"
-      "antigravity.desktop"
       "kiro.desktop"
       "dev.zed.Zed.desktop"
     ];

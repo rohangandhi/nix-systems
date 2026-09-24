@@ -41,9 +41,15 @@ Exports:
 - `nixosModules.gnome`, `proxy`, `matrix-one`, and `matrix-commands`: individual modules.
 - `templates.workstation`: a complete starting point for your own host.
 
-Pass `inputs = public.inputs` and the typed `my-options` values through `specialArgs`, as shown in the template. The account name/UID, group name/GID, hostname, and display scale have no hidden owner-specific defaults. Individual app modules can also be imported directly from the input's source path. Optional Cursor integration uses `local.cursor.executable` and `local.cursor.icon`.
+Pass `inputs = public.inputs` and the typed `my-options` values through `specialArgs`, as shown in the template. The account name/UID, group name/GID, hostname, and display scale have no hidden owner-specific defaults. Individual app modules can also be imported directly from the input's source path.
 
 Both grouped module exports are declared directly in `flake.nix`. To keep your whole system visible in one file, follow the template's explicit module list. No directory scanning or custom system builders are used.
+
+## Standalone development shells
+
+`shells/python` and `shells/jailed-pi` are independent flakes, entered with `nix develop ./shells/python` or `nix develop ./shells/jailed-pi`. They are intentionally separate from the workstation module list.
+
+Persistence entries in `zion/hardware/filesystem.nix` also cover manually installed tools. Keep their saved state when removing an application module.
 
 ## Development VM
 

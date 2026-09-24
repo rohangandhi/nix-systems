@@ -42,8 +42,6 @@
 
         # Desktop
         "${public}/common/desktop/gnome.nix"
-        # "${public}/common/desktop/hyprland/hyprland.nix"
-        # "${public}/common/desktop/kde/kde.nix"
 
         # Browser
         "${public}/common/apps/browser/firefox.nix"
@@ -56,31 +54,20 @@
         "${public}/common/apps/terminal/fish.nix"
         "${public}/common/apps/terminal/starship.nix"
         "${public}/common/apps/terminal/commands.nix"
-        # "${public}/common/apps/terminal/yazi.nix"
 
         # Development
         "${public}/common/apps/development/codium.nix"
         "${public}/common/apps/development/codex.nix"
-        # "${public}/common/apps/development/vscode.nix"
-        # "${public}/common/apps/development/cursor.nix"
-        # "${public}/common/apps/development/antigravity.nix"
         "${public}/common/apps/development/kiro.nix"
         "${public}/common/apps/development/zed.nix"
-        # "${public}/common/apps/development/emacs.nix"
 
         # VM launchers
         "${public}/matrix/one/commands.nix"
 
         # Miscellaneous applications
         "${public}/common/apps/container.nix"
-        # "${public}/common/apps/virt.nix"
         "${public}/common/apps/git.nix"
-        # "${public}/common/apps/slack.nix"
-        # "${public}/common/apps/zoom.nix"
-        # "${public}/common/apps/mpv.nix"
-        # "${public}/common/apps/ticktick.nix"
         "${public}/common/apps/app-image.nix"
-        # "${public}/common/apps/distrobox.nix"
         "${public}/common/apps/qalculate.nix"
       ];
     };
