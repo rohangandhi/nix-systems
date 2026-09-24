@@ -15,4 +15,17 @@
   # mapping. Keep this scoped to the managed login user instead of granting
   # broader podman socket access via the `podman` group.
   users.users.${my-options.user.name}.autoSubUidGidRange = true;
+
+  home-manager.users.${my-options.user.name} = { ... }: {
+    # Use the exec-capable data filesystem for rootless containers and volumes.
+    home.file.".config/containers/storage.conf".text = ''
+      [storage]
+      driver = "overlay"
+      graphroot = "/p-data/containers/storage"
+    '';
+    home.file.".config/containers/containers.conf".text = ''
+      [engine]
+      volume_path = "/p-data/containers/storage/volumes"
+    '';
+  };
 }

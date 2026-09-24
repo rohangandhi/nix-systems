@@ -60,6 +60,7 @@
           };
         };
         nixd = {
+          options.nixos.expr = "(builtins.getFlake \"/home/ephemeral/n-data/nix/systems\").nixosConfigurations.zion-alpha.options";
           formatting = {
             command = [ "nixpkgs-fmt" ];
           };

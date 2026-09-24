@@ -1,9 +1,4 @@
-{ inputs, lib, ... }: {
-  imports = [
-    ../zion/workstation.nix
-    "${inputs.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
-  ];
-
+{ lib, ... }: {
   # Demonstration credentials and automatic login are confined to this VM.
   users.users.demo.hashedPassword = "";
   services.getty.autologinUser = "demo";

@@ -4,8 +4,10 @@
   # services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;
   services.gnome.gnome-keyring.enable = true;
-
-  
+  services.displayManager.autoLogin.enable = true;
+  services.displayManager.autoLogin.user = my-options.user.name;
+  systemd.services."getty@tty1".enable = false;
+  systemd.services."autovt@tty1".enable = false;
 
   # For a minimal / barebones Gnome DE
   services.gnome.core-apps.enable = false;
@@ -38,6 +40,8 @@
     dconf.enable = true;
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
     dconf.settings."org/gnome/desktop/interface".accent-color = "green";
+    dconf.settings."org/gnome/desktop/background".picture-uri = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
+    dconf.settings."org/gnome/desktop/background".picture-uri-dark = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
 
 
     # Power management settings

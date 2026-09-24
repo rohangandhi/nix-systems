@@ -33,12 +33,91 @@
   };
 
   outputs = { self, ... }@inputs: {
-    nixosModules.default = ./zion/system.nix;
-    nixosModules.workstation = ./zion/workstation.nix;
-    nixosModules.gnome = ./common/desktop/gnome.nix;
-    nixosModules.proxy = ./zion/os/proxy.nix;
-    nixosModules.matrix-one = ./matrix/one/configuration.nix;
-    nixosModules.matrix-commands = ./matrix/systems.nix;
+    nixosConfigurations.zion-alpha = inputs.nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {
+        inherit inputs;
+        my-options = {
+          name = "zion-alpha";
+          display.scaling = "2";
+          user = { name = "ephemeral"; uid = 1000; };
+          group = { name = "devs"; gid = 999; };
+        };
+      };
+      # The complete public host declaration. Add credentials and private
+      # services through the small extension in the private checkout.
+      modules = [
+        # Nix and shared settings
+        ./zion/options.nix
+        ./zion/nix.nix
+
+        # Upstream modules
+        ./common/input-modules/impermanence.nix
+        ./common/input-modules/disko.nix
+        ./common/input-modules/home-manager.nix
+        ./common/input-modules/home-manager/impermanence.nix
+        # ./common/input-modules/home-manager/stylix.nix
+        # ./common/input-modules/home-manager/plasma-manager.nix
+        # ./common/input-modules/hyprland.nix
+
+        # Hardware and storage
+        ./zion/os/boot.nix
+        ./zion/hardware/graphics.nix
+        ./zion/hardware/generated.nix
+        ./zion/hardware/filesystem.nix
+
+        # Operating system
+        ./zion/os/fonts.nix
+        ./zion/os/networking.nix
+        ./zion/os/audio.nix
+        ./zion/os/users.nix
+        ./zion/os/locale.nix
+        ./zion/os/proxy.nix
+
+        # Desktop
+        ./common/desktop/gnome.nix
+        # ./common/desktop/hyprland/hyprland.nix
+        # ./common/desktop/kde/kde.nix
+
+        # Browser
+        ./common/apps/browser/firefox.nix
+        ./common/apps/browser/chromium.nix
+
+        # Terminal
+        ./common/apps/terminal/fastfetch.nix
+        ./common/apps/terminal/alacritty.nix
+        ./common/apps/terminal/tmux.nix
+        ./common/apps/terminal/fish.nix
+        ./common/apps/terminal/starship.nix
+        ./common/apps/terminal/commands.nix
+        # ./common/apps/terminal/yazi.nix
+
+        # Development
+        ./common/apps/development/codium.nix
+        ./common/apps/development/codex.nix
+        # ./common/apps/development/vscode.nix
+        # ./common/apps/development/cursor.nix
+        # ./common/apps/development/antigravity.nix
+        ./common/apps/development/kiro.nix
+        ./common/apps/development/zed.nix
+        # ./common/apps/development/emacs.nix
+
+        # VM launchers
+        ./matrix/one/commands.nix
+
+        # Miscellaneous applications
+        ./common/apps/container.nix
+        # ./common/apps/virt.nix
+        ./common/apps/git.nix
+        # ./common/apps/slack.nix
+        # ./common/apps/zoom.nix
+        # ./common/apps/mpv.nix
+        # ./common/apps/ticktick.nix
+        ./common/apps/app-image.nix
+        # ./common/apps/distrobox.nix
+        ./common/apps/qalculate.nix
+      ];
+    };
 
     nixosConfigurations.example = inputs.nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
@@ -51,7 +130,72 @@
           group = { name = "users"; gid = 100; };
         };
       };
-      modules = [ ./examples/vm.nix ];
+      # The complete example system is declared here, without an import bundle.
+      modules = [
+        # Nix and shared settings
+        ./zion/options.nix
+        ./zion/nix.nix
+
+        # Upstream modules
+        ./common/input-modules/impermanence.nix
+        ./common/input-modules/disko.nix
+        ./common/input-modules/home-manager.nix
+        ./common/input-modules/home-manager/impermanence.nix
+
+        # VM hardware and demonstration login
+        "${inputs.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
+        ./examples/vm.nix
+
+        # Operating system
+        ./zion/os/fonts.nix
+        ./zion/os/networking.nix
+        ./zion/os/audio.nix
+        ./zion/os/users.nix
+        ./zion/os/proxy.nix
+
+        # Desktop
+        ./common/desktop/gnome.nix
+        # ./common/desktop/hyprland/hyprland.nix
+        # ./common/desktop/kde/kde.nix
+
+        # Browser
+        ./common/apps/browser/firefox.nix
+        ./common/apps/browser/chromium.nix
+
+        # Terminal
+        ./common/apps/terminal/fastfetch.nix
+        ./common/apps/terminal/alacritty.nix
+        ./common/apps/terminal/tmux.nix
+        ./common/apps/terminal/fish.nix
+        ./common/apps/terminal/starship.nix
+        ./common/apps/terminal/commands.nix
+        # ./common/apps/terminal/yazi.nix
+
+        # Development
+        ./common/apps/development/codium.nix
+        ./common/apps/development/codex.nix
+        # ./common/apps/development/vscode.nix
+        # ./common/apps/development/cursor.nix
+        # ./common/apps/development/antigravity.nix
+        ./common/apps/development/kiro.nix
+        ./common/apps/development/zed.nix
+        # ./common/apps/development/emacs.nix
+
+        # VM launchers
+        ./matrix/one/commands.nix
+
+        # Miscellaneous applications
+        ./common/apps/container.nix
+        # ./common/apps/virt.nix
+        ./common/apps/git.nix
+        # ./common/apps/slack.nix
+        # ./common/apps/zoom.nix
+        # ./common/apps/mpv.nix
+        # ./common/apps/ticktick.nix
+        ./common/apps/app-image.nix
+        # ./common/apps/distrobox.nix
+        ./common/apps/qalculate.nix
+      ];
     };
 
     packages.x86_64-linux.example-vm = self.nixosConfigurations.example.config.system.build.vm;
@@ -59,5 +203,59 @@
       path = ./templates/workstation;
       description = "Standalone workstation with explicit user, storage, and hardware settings";
     };
+
+    # Existing module exports for external consumers. Our system declarations
+    # list their modules directly above and in the template's flake.nix.
+    nixosModules.default = {
+      imports = [
+        ./zion/options.nix
+        ./zion/nix.nix
+        ./zion/os/fonts.nix
+        ./zion/os/networking.nix
+        ./zion/os/audio.nix
+        ./zion/os/users.nix
+        ./common/input-modules/impermanence.nix
+        ./common/input-modules/disko.nix
+        ./common/input-modules/home-manager.nix
+        ./common/input-modules/home-manager/impermanence.nix
+      ];
+    };
+    nixosModules.workstation = {
+      imports = [
+        ./zion/options.nix
+        ./zion/nix.nix
+        ./zion/os/fonts.nix
+        ./zion/os/networking.nix
+        ./zion/os/audio.nix
+        ./zion/os/users.nix
+        ./common/input-modules/impermanence.nix
+        ./common/input-modules/disko.nix
+        ./common/input-modules/home-manager.nix
+        ./common/input-modules/home-manager/impermanence.nix
+        ./zion/os/proxy.nix
+        ./common/desktop/gnome.nix
+        ./common/apps/browser/firefox.nix
+        ./common/apps/browser/chromium.nix
+        ./common/apps/terminal/fastfetch.nix
+        ./common/apps/terminal/alacritty.nix
+        ./common/apps/terminal/tmux.nix
+        ./common/apps/terminal/fish.nix
+        ./common/apps/terminal/starship.nix
+        ./common/apps/terminal/commands.nix
+        ./common/apps/development/codium.nix
+        ./common/apps/development/codex.nix
+        ./common/apps/development/kiro.nix
+        ./common/apps/development/zed.nix
+        ./matrix/one/commands.nix
+        ./common/apps/container.nix
+        ./common/apps/git.nix
+        ./common/apps/app-image.nix
+        ./common/apps/qalculate.nix
+      ];
+    };
+    nixosModules.gnome = ./common/desktop/gnome.nix;
+    nixosModules.proxy = ./zion/os/proxy.nix;
+    nixosModules.matrix-one = ./matrix/one/configuration.nix;
+    nixosModules.matrix-commands = ./matrix/one/commands.nix;
   };
 }

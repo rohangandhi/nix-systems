@@ -1,3 +1,0 @@
-{ ... }: {
-  imports = [ ./one/commands.nix ];
-}

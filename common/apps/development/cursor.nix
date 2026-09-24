@@ -1,6 +1,6 @@
 { config, lib, my-options, ... }: {
-  options.local.cursor.executable = lib.mkOption { type = lib.types.str; default = "Cursor.AppImage"; description = "Cursor executable path."; };
-  options.local.cursor.icon = lib.mkOption { type = lib.types.str; default = "cursor"; description = "Cursor desktop icon name or path."; };
+  options.local.cursor.executable = lib.mkOption { type = lib.types.str; default = "/home/${my-options.user.name}/p-data/application/cursor/Cursor.AppImage"; description = "Cursor executable path."; };
+  options.local.cursor.icon = lib.mkOption { type = lib.types.str; default = "/home/${my-options.user.name}/p-data/application/cursor/icon.jpeg"; description = "Cursor desktop icon name or path."; };
   config = {
 
   # create desktop entry for cursor
