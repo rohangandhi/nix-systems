@@ -12,14 +12,6 @@
     programs.fish.package = pkgs.fish;
     programs.fish.plugins = [ ];
     programs.fish.functions = {
-      fish_greeting = ''
-        if test "$PWD" = "$HOME"
-          date
-          cal -3
-          ${pkgs.fastfetch}/bin/fastfetch
-          ,df / ~ /p-os/ /p-home/ /p-data/
-        end
-      '';
 
       # cd using yazi
       y = ''

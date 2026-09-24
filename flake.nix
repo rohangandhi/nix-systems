@@ -5,6 +5,11 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
+    codex-desktop-linux = {
+      url = "github:ilysenko/codex-desktop-linux";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -27,67 +32,32 @@
     };
   };
 
-  outputs = { self, ... } @inputs: {
-    input-modules = [
-      ./common/input-modules/impermanence.nix
-      ./common/input-modules/disko.nix
-      ./common/input-modules/home-manager.nix
-      ./common/input-modules/home-manager/impermanence.nix
-      # ./common/input-modules/home-manager/stylix.nix
-      # ./common/input-modules/home-manager/plasma-manager.nix
-      # ./common/input-modules/hyprland.nix
-    ];
+  outputs = { self, ... }@inputs: {
+    nixosModules.default = ./zion/system.nix;
+    nixosModules.workstation = ./zion/workstation.nix;
+    nixosModules.gnome = ./common/desktop/gnome.nix;
+    nixosModules.proxy = ./zion/os/proxy.nix;
+    nixosModules.matrix-one = ./matrix/one/configuration.nix;
+    nixosModules.matrix-commands = ./matrix/systems.nix;
 
-    nixosConfigurations = {
-      zion-alpha = import ./zion/system.nix {
+    nixosConfigurations.example = inputs.nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {
         inherit inputs;
-        system-name = "zion-alpha";
-        input-modules = self.input-modules;
-        desktop = [
-          #./common/desktop/hyprland/hyprland.nix
-          # ./common/desktop/kde/kde.nix
-          ./common/desktop/gnome.nix
-        ];
-        apps = [
-          # Browser
-          ./common/apps/browser/firefox.nix
-          ./common/apps/browser/chromium.nix
-
-          # Terminal
-          ./common/apps/terminal/fastfetch.nix
-          ./common/apps/terminal/alacritty.nix
-          ./common/apps/terminal/tmux.nix
-          ./common/apps/terminal/fish.nix
-          ./common/apps/terminal/starship.nix
-          ./common/apps/terminal/commands.nix
-          # ./common/apps/terminal/yazi.nix
-
-          # Development
-          ./common/apps/development/codium.nix
-          ./common/apps/development/vscode.nix
-          ./common/apps/development/cursor.nix
-          ./common/apps/development/antigravity.nix
-          ./common/apps/development/kiro.nix
-
-          # ./common/apps/development/zed.nix
-          #./common/apps/development/emacs.nix
-
-          # VM runners
-          ./matrix/systems.nix
-
-          # Misc
-          ./common/apps/container.nix
-          # ./common/apps/virt.nix
-          ./common/apps/git.nix
-          # ./common/apps/slack.nix
-          # ./common/apps/zoom.nix
-          # ./common/apps/mpv.nix
-          # ./common/apps/ticktick.nix
-          ./common/apps/app-image.nix
-          # ./common/apps/distrobox.nix
-          ./common/apps/qalculate.nix
-        ];
+        my-options = {
+          name = "example";
+          display.scaling = "1";
+          user = { name = "demo"; uid = 1000; };
+          group = { name = "users"; gid = 100; };
+        };
       };
+      modules = [ ./examples/vm.nix ];
+    };
+
+    packages.x86_64-linux.example-vm = self.nixosConfigurations.example.config.system.build.vm;
+    templates.workstation = {
+      path = ./templates/workstation;
+      description = "Standalone workstation with explicit user, storage, and hardware settings";
     };
   };
 }

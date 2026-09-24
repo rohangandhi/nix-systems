@@ -34,25 +34,19 @@
 
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
 
-    programs.vscode.enable = true;
-    programs.vscode.mutableExtensionsDir = true;
-    programs.vscode.package = pkgs.vscodium;
-    programs.vscode.profiles.default.enableExtensionUpdateCheck = false;
-    programs.vscode.profiles.default.enableUpdateCheck = false;
-    programs.vscode.profiles.default.extensions = [
-      pkgs.vscode-extensions.jnoortheen.nix-ide
-      pkgs.vscode-extensions.ms-python.python
-      pkgs.vscode-extensions.ms-python.debugpy
-      pkgs.vscode-extensions.ms-toolsai.jupyter
-      pkgs.vscode-extensions.saoudrizwan.claude-dev
-      # pkgs.vscode-extensions.continue.continue
-    ];
+    programs.vscodium.enable = true;
+    programs.vscodium.mutableExtensionsDir = true;
+    programs.vscodium.package = pkgs.vscodium;
+    programs.vscodium.profiles.default.enableExtensionUpdateCheck = false;
+    programs.vscodium.profiles.default.enableUpdateCheck = false;
 
-    programs.vscode.profiles.default.userSettings = {
+    programs.vscodium.profiles.default.userSettings = {
 
       workbench.colorTheme = "Default Dark Modern";
 
       window.menuBarVisibility = "toggle";
+
+      svelte.enable-ts-plugin = true;
 
       nix.enableLanguageServer = true;
       nix.serverPath = "nixd";
@@ -68,11 +62,6 @@
         nixd = {
           formatting = {
             command = [ "nixpkgs-fmt" ];
-          };
-          options = {
-            nixos = {
-              expr = "(builtins.getFlake \"/home/ephemeral/n-zion/nix/systems/zion/alpha\").nixosConfigurations..options";
-            };
           };
         };
       };

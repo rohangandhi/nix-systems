@@ -44,6 +44,7 @@
       acl media_replies rep_mime_type -i application/dash+xml
       acl media_replies rep_mime_type -i application/vnd.apple.mpegurl
       http_reply_access deny media_replies
+
     '';
   };
 }

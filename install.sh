@@ -1,15 +1,17 @@
-set -e
-# Run this from a Nixos live installer
-# Disk ID and system name are hard coded. TODO.
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Use disko to re-partition disk and mount the partitions.
-# sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode destroy,format,mount --flake .#zion-alpha
+if [[ $# -ne 1 || "$1" != *#* ]]; then
+  echo "usage: $0 <flake-path#host>" >&2
+  echo "Mount the target root at /mnt and its boot/data filesystems first." >&2
+  exit 2
+fi
+if ! mountpoint -q /mnt; then
+  echo "The target root must be mounted at /mnt before installation." >&2
+  exit 1
+fi
 
-# OR
-
-# Use disko to just mount the partitions.
-sudo cryptsetup luksOpen /dev/disk/by-partlabel/disk-main-system decrypted
-sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko/latest -- --mode format,mount --flake .#zion-alpha
-
-# Install Nixos
-NIX_CONFIG="experimental-features = nix-command flakes" sudo nixos-install --flake .#zion-alpha --no-root-passwd
+# Storage preparation is a separate, explicit operation. This script never formats disks.
+# nixos-install prompts for a root password; the host configuration supplies its login user.
+sudo env NIX_CONFIG="experimental-features = nix-command flakes" \
+  nixos-install --flake "$1" --no-channel-copy

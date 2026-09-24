@@ -11,16 +11,8 @@
     pkgs.podman-compose # start group of containers for dev
   ];
 
-  users.users.${my-options.user.name} = {
-    extraGroups = [ "podman" ];
-  };
-  home-manager.users.${my-options.user.name} = { my-options, ... }: {
-    # hard coding persistent storage path because 
-    # home manager persistence module's fuse mount seems to not work.
-    home.file.".config/containers/storage.conf".text = ''
-      [storage]
-      driver = "overlay"
-      graphroot = "/p-home/${my-options.user.name}/.local/share/containers/storage"
-    '';
-  };
+  # Rootless Podman needs subordinate IDs on native Linux for user namespace
+  # mapping. Keep this scoped to the managed login user instead of granting
+  # broader podman socket access via the `podman` group.
+  users.users.${my-options.user.name}.autoSubUidGidRange = true;
 }

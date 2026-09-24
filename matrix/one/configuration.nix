@@ -69,7 +69,7 @@
         nix-store = {
           source = builtins.storeDir;
           target = "/nix/.ro-store";
-          securityModel = "none";
+          writable = false;
         };
         host-ssh = {
           # The host launcher shares only public auth material with the guest.
@@ -77,7 +77,7 @@
           # directory so the guest cannot read or reuse it.
           source = ''"''${MATRIX_ONE_SSH_AUTH_DIR:-$TMPDIR/matrix-one-ssh-auth}"'';
           target = "/mnt/host-ssh";
-          securityModel = "none";
+          writable = false;
         };
       };
 
@@ -116,7 +116,7 @@
     pkgs.bun
     pkgs.tmux
     pkgs.alacritty
-    pkgs.emacs30-pgtk
+    pkgs.emacs-pgtk
     pkgs.fish
     pkgs.eza
     pkgs.duf

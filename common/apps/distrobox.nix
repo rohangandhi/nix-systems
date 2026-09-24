@@ -8,5 +8,3 @@
 
 #distrobox create --name course_a --image fedora:latest --home /p-home/distrobox/course_a --unshare-all --init
 #distrobox enter course_a
-#sudo chown -R ephemeral:devs ~/.config
-#sudo chown -R ephemeral:devs ~/.local

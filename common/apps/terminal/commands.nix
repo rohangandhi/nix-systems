@@ -4,7 +4,6 @@
     gs = "git status";
     gl = "git log --graph --pretty=format:'%Cred%h%Creset - %s %Cgreen(%ar) %C(bold blue)[%an]%Creset%C(yellow)%d%Creset' --abbrev-commit";
     du = "du -ahx -d 1";
-        # df -hT / ~ /p-home/ /p-os/
         # du -ahx -d 1 | sort -h -r
 
   };

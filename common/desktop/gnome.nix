@@ -1,15 +1,11 @@
 { my-options, lib, pkgs, ... }: {
 
   services.displayManager.gdm.enable = true;
-  services.displayManager.gdm.wayland = true;
+  # services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;
   services.gnome.gnome-keyring.enable = true;
 
-  services.displayManager.autoLogin.enable = true;
-  services.displayManager.autoLogin.user = "${my-options.user.name}";
   
-  systemd.services."getty@tty1".enable = false;
-  systemd.services."autovt@tty1".enable = false;
 
   # For a minimal / barebones Gnome DE
   services.gnome.core-apps.enable = false;
@@ -19,7 +15,7 @@
   environment.gnome.excludePackages = [ pkgs.gnome-tour pkgs.gnome-user-docs ];
   
   programs.dconf.profiles.gdm.databases = [{
-    settings."org/gnome/desktop/interface".scaling-factor = lib.gvariant.mkUint32 2;
+    settings."org/gnome/desktop/interface".scaling-factor = lib.gvariant.mkUint32 (lib.toInt my-options.display.scaling);
   }];
 
   programs.dconf.profiles.user.databases = [
@@ -43,9 +39,6 @@
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
     dconf.settings."org/gnome/desktop/interface".accent-color = "green";
 
-    # Wallpaper from persistent directory
-    dconf.settings."org/gnome/desktop/background".picture-uri = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
-    dconf.settings."org/gnome/desktop/background".picture-uri-dark = "file:///home/${my-options.user.name}/n-data/wallpapers/lightning-abstract-2560x1440-v0-no9zyx3wnnwf1.webp";
 
     # Power management settings
     dconf.settings."org/gnome/settings-daemon/plugins/power".sleep-inactive-ac-timeout = 1800;  # 30 minutes suspend on AC power
@@ -65,6 +58,8 @@
       "codium.desktop"
       "code.desktop"
       "antigravity.desktop"
+      "kiro.desktop"
+      "dev.zed.Zed.desktop"
     ];
 
     dconf.settings."org/gnome/shell/app-switcher" = {
@@ -101,7 +96,7 @@
                 exit 0
               fi
 
-              SCALE_FACTOR=2
+              SCALE_FACTOR=${my-options.display.scaling}
 
               NAMESPACE="org.gnome.Mutter.DisplayConfig"
               OBJECT="/org/gnome/Mutter/DisplayConfig"
