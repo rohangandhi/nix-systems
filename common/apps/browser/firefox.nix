@@ -13,21 +13,74 @@
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
     programs.firefox.enable = true;
     programs.firefox.package = pkgs.firefox;
+    # Keep the existing profile and persisted data when Home Manager defaults change.
+    programs.firefox.configPath = ".mozilla/firefox";
 
-    /* ---- POLICIES ---- */
-    # Check about:policies#documentation for options.
+    # Prefer supported policies over internal preferences. Verify applied values
+    # and errors in about:policies after rebuilding and restarting Firefox.
+    # https://firefox-admin-docs.mozilla.org/reference/policies/
     programs.firefox.policies = {
       DisableTelemetry = true;
       DisableFirefoxStudies = true;
-      EnableTrackingProtection = {
-        Value = true;
-        Locked = true;
-        Cryptomining = true;
-        Fingerprinting = true;
-      };
-      DisablePocket = true;
       DisableAccounts = true;
-      DisableFirefoxAccounts = true;
+
+      # Strict includes cookie partitioning, known/suspected fingerprinting,
+      # email tracking, bounce tracking, and tracking-parameter protection.
+      # Keep Firefox's strict-mode compatibility exceptions and per-site controls.
+      EnableTrackingProtection = {
+        Category = "strict";
+        Locked = true;
+      };
+      HttpsOnlyMode = "force_enabled";
+
+      # Prefer Mullvad DNS, but fall back to the system resolver when it is
+      # unavailable while a private DNS service is being prepared.
+      DNSOverHTTPS = {
+        Enabled = true;
+        ProviderURL = "https://dns.mullvad.net/dns-query";
+        Fallback = true;
+        Locked = true;
+      };
+      NetworkPrediction = false;
+
+      # Keep typed searches and the new-tab page free of remote suggestions,
+      # sponsored content, stories, and widgets that make background requests.
+      SearchSuggestEnabled = false;
+      FirefoxSuggest = {
+        WebSuggestions = false;
+        SponsoredSuggestions = false;
+        OnlineEnabled = false;
+        Locked = true;
+      };
+      FirefoxHome = {
+        SponsoredTopSites = false;
+        Highlights = false;
+        Stories = false;
+        SponsoredStories = false;
+        Weather = false;
+        Widgets.Enabled = false;
+        Locked = true;
+      };
+      UserMessaging = {
+        ExtensionRecommendations = false;
+        FeatureRecommendations = false;
+        MoreFromMozilla = false;
+        Locked = true;
+      };
+
+      # Disable browser-integrated chat/assistant features; leave local tools
+      # such as translation and PDF accessibility available.
+      AIControls = {
+        SidebarChatbot = { Value = "blocked"; Locked = true; };
+        SmartWindow = { Value = "blocked"; Locked = true; };
+      };
+
+      # Bitwarden handles saved credentials and autofill.
+      DisableFormHistory = true;
+      AutofillAddressEnabled = false;
+      AutofillCreditCardEnabled = false;
+      OfferToSaveLogins = false;
+
       DisableFirefoxScreenshots = true;
       OverrideFirstRunPage = "";
       OverridePostUpdatePage = "";
@@ -39,51 +92,29 @@
       Permissions.Location.BlockNewRequests = true;
       Permissions.Notifications.BlockNewRequests = true;
 
-      /* ---- PREFERENCES ---- */
-      # Check about:config for options.
+      # Only use Preferences for values supported by its allowlist. In
+      # particular, most privacy.* preferences need their dedicated policy.
       Preferences =
         let
           lock-false = { Value = false; Status = "locked"; };
           lock-true = { Value = true; Status = "locked"; };
-          lock-strict = { Value = "strict"; Status = "locked"; };
         in
         {
-          "browser.uiCustomization.state" = ''{"placements":{"widget-overflow-fixed-list":[],"unified-extensions-area":[],"nav-bar":["back-button","forward-button","_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action","stop-reload-button","urlbar-container","save-to-pocket-button","downloads-button","fxa-toolbar-menu-button","ublock0_raymondhill_net-browser-action","unified-extensions-button"],"toolbar-menubar":["menubar-items"],"TabsToolbar":["firefox-view-button","tabbrowser-tabs","new-tab-button","alltabs-button"],"PersonalToolbar":["import-button","personal-bookmarks"]},"seen":["developer-button","ublock0_raymondhill_net-browser-action","_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"],"dirtyAreaCache":["nav-bar","PersonalToolbar","unified-extensions-area","toolbar-menubar","TabsToolbar"],"currentVersion":20,"newElementCount":3}'';
-
-          "browser.contentblocking.category" = lock-strict;
+          "privacy.globalprivacycontrol.enabled" = lock-true;
           "browser.topsites.contile.enabled" = lock-false;
-          "browser.formfill.enable" = lock-false;
-          "browser.search.suggest.enabled" = lock-false;
           "browser.search.suggest.enabled.private" = lock-false;
-          "browser.urlbar.suggest.searches" = lock-false;
-          "browser.urlbar.showSearchSuggestionsFirst" = lock-false;
-          "browser.newtabpage.activity-stream.feeds.section.topstories" = lock-false;
-          "browser.newtabpage.activity-stream.feeds.snippets" = lock-false;
-          "browser.newtabpage.activity-stream.section.highlights.includePocket" = lock-false;
-          "browser.newtabpage.activity-stream.section.highlights.includeBookmarks" = lock-false;
-          "browser.newtabpage.activity-stream.section.highlights.includeDownloads" = lock-false;
-          "browser.newtabpage.activity-stream.section.highlights.includeVisited" = lock-false;
-          "browser.newtabpage.activity-stream.showSponsored" = lock-false;
-          "browser.newtabpage.activity-stream.system.showSponsored" = lock-false;
-          "browser.newtabpage.activity-stream.showSponsoredTopSites" = lock-false;
-          "privacy.sanitize.sanitizeOnShutdown" = lock-true;
+          "browser.discovery.enabled" = lock-false;
+          "browser.uitour.enabled" = lock-false;
+          "signon.autofillForms" = lock-false;
+          "signon.formlessCapture.enabled" = lock-false;
 
-          # Disable Form autofill
-          # https://wiki.mozilla.org/Firefox/Features/Form_Autofill
-          "extensions.formautofill.addresses.enabled" = false;
-          "extensions.formautofill.available" = "off";
-          "extensions.formautofill.creditCards.available" = false;
-          "extensions.formautofill.creditCards.enabled" = false;
-          "extensions.formautofill.heuristics.enabled" = false;
-
-          "signon.rememberSignons" = false;
-          "signon.autofillForms" = false;
-          "signon.formlessCapture.enabled" = false;
-
-          ## DNS over HTTPS (DoH)
-          ## https://wiki.mozilla.org/Trusted_Recursive_Resolver
-          "network.trr.mode" = 3;
-          "network.trr.uri" = "https://dns.mullvad.net/dns-query";
+          # Avoid speculative page fetches/connections before following links.
+          "network.prefetch-next" = lock-false;
+          "network.http.speculative-parallel-limit" = {
+            Value = 0;
+            Type = "number";
+            Status = "locked";
+          };
         };
 
       /* ---- EXTENSIONS ---- */
@@ -129,10 +160,13 @@
             "easylist-annoyances"
             "ublock-annoyances"
           ];
-          userFilters = "||accounts.google.com/gsi/*$xhr,script,3p\n||ogs.google.com/widget/callout
-          \nwww.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(1)
-          \nwww.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(2)
-          \nwww.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(3)";
+          userFilters = ''
+            ||accounts.google.com/gsi/*$xhr,script,3p
+            ||ogs.google.com/widget/callout
+            www.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(1)
+            www.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(2)
+            www.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope:nth-of-type(3)
+          '';
         };
       };
     };
