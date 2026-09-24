@@ -148,6 +148,7 @@ in {
       "org.gnome.Nautilus.desktop"
       "Alacritty.desktop"
       "codium.desktop"
+      "codex-desktop.desktop"
     ];
 
     dconf.settings."org/gnome/shell/app-switcher" = {
