@@ -10,7 +10,7 @@ Feature files contain settings; `flake.nix` selects them explicitly.
 ## Guides
 
 - [Storage and persistence](zion/hardware/README-impermanence.md): current disk layout, migration ordering, and diagnosing lost application state.
-- [Editor settings and state](common/apps/development/README.md): VSCodium and Zed settings ownership, extensions, and workspace trust.
+- [Editor settings and state](common/apps/development/README.md): VSCodium settings ownership, extensions, and workspace trust.
 - [Terminal usage](common/apps/terminal/README.md): Fish shortcuts, optional tmux, the prompt, and fonts.
 - [Shared themes](common/theme/README.md): select, disable, or add a palette and understand its application coverage.
 

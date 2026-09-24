@@ -148,8 +148,6 @@ in {
       "org.gnome.Nautilus.desktop"
       "Alacritty.desktop"
       "codium.desktop"
-      "kiro.desktop"
-      "dev.zed.Zed.desktop"
     ];
 
     dconf.settings."org/gnome/shell/app-switcher" = {

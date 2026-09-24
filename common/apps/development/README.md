@@ -1,13 +1,13 @@
 # Editor settings and state
 
 The public [flake](../../../flake.nix) selects the development applications.
-[codium.nix](codium.nix) and [zed.nix](zed.nix) own their editor settings;
+[codium.nix](codium.nix) owns VSCodium's editor settings;
 [filesystem.nix](../../../zion/hardware/filesystem.nix) owns persistence.
 Use the [shared theme guide](../../theme/README.md) for palette selection.
 
 ## Nix settings and UI settings
 
-VSCodium and Zed use Home Manager's mutable-settings support. On activation,
+VSCodium uses Home Manager's mutable-settings support. On activation,
 Home Manager merges the declared settings into the saved settings file:
 
 - A value declared in Nix is reapplied on rebuild. Change its declaration for a
@@ -108,14 +108,3 @@ codium --user-data-dir /tmp/codium-check/user-data \
 `--user-data-dir` alone does not isolate workspace trust. Test writable settings,
 language-server formatting, palette selection, and trust across reopening.
 Host persistence across reboot requires a separate check.
-
-## Zed
-
-Zed's settings are under `~/.config/zed`; application data is under
-`~/.local/share/zed`. Both directories are persisted. The Nix extension is enabled
-in `zed.nix`.
-
-The palette is generated as `~/.config/zed/themes/shared-palette.json` and selected
-in the mutable settings. Disabling it explicitly selects `One Dark` and
-`One Light` in system mode and removes the generated theme. Omitting the `theme`
-declaration would leave the previous selection in the merged settings file.

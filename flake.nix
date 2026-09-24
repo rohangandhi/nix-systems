@@ -77,8 +77,6 @@
         ./common/apps/development/codium.nix
         ./common/theme/codium.nix
         ./common/apps/development/codex.nix
-        ./common/apps/development/kiro.nix
-        ./common/apps/development/zed.nix
 
         # VM launchers
         ./matrix/one/commands.nix
@@ -134,8 +132,6 @@
         ./common/apps/development/codium.nix
         ./common/theme/codium.nix
         ./common/apps/development/codex.nix
-        ./common/apps/development/kiro.nix
-        ./common/apps/development/zed.nix
         ./matrix/one/commands.nix
         ./common/apps/container.nix
         ./common/apps/git.nix

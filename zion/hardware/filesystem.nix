@@ -265,9 +265,6 @@
         ".vscode-oss"
         ".vscode-oss-shared"
         ".config/VSCodium"
-
-        ".config/zed"
-        ".local/share/zed"
       ];
       files = [ ".config/fish/fish_variables" ];
       allowOther = true;

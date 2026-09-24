@@ -24,7 +24,7 @@ new configuration at different times:
 | GTK applications | Reopen them to load the generated CSS and settings. |
 | Alacritty, Fish, and Starship | Start a fresh terminal to apply shell colors and prompt settings together. |
 | tmux | Existing servers retain settings; start a new server after finishing work in the old sessions, especially when disabling the palette. |
-| VSCodium and Zed | Close and reopen the editor to load the theme and extension changes. |
+| VSCodium | Close and reopen the editor to load the theme and extension changes. |
 
 For changes to editor storage or settings ownership, close the editor before the
 rebuild too; see [editor settings and state](../apps/development/README.md).
@@ -34,19 +34,16 @@ rebuild too; see [editor settings and state](../apps/development/README.md).
 `null` removes GTK CSS, GNOME's custom accent, Alacritty colors, Fish color
 overrides, and tmux styling. VSCodium selects Dark Modern and removes the local
 palette theme; its writable settings retain unrelated UI preferences. Starship
-keeps its compact layout with built-in module styles. Zed explicitly selects its
-built-in One Light and One Dark themes in system mode, because its mutable
-settings otherwise retain the previous selection. Its generated palette theme
-is removed.
+keeps its compact layout with built-in module styles.
 
 Fonts, padding, key bindings, shell behavior, and the existing GNOME dark-mode
 preference are independent of the palette. Disabling the palette does not change
 them. Existing user-selected Fish colors can still apply when our overrides are
 absent.
 
-## Why editors use native themes
+## Why VSCodium uses a native theme
 
-Both editors merge declared settings into writable user settings. Removing a
+VSCodium merges declared settings into writable user settings. Removing a
 declaration alone can leave its previous value on disk, including nested color
 overrides. The palette therefore lives in a native theme, with an explicit
 built-in theme selection when disabled.
@@ -54,8 +51,8 @@ built-in theme selection when disabled.
 The separately selected [VSCodium theme module](codium.nix) installs
 `local.shared-palette`, with the stable theme ID `Shared Palette` and the selected
 palette as its display name. It inherits Dark Modern's remaining colors and
-syntax rules. Zed writes `themes/shared-palette.json`. Their generated theme files
-remain Nix-managed while unrelated user settings remain writable.
+syntax rules. Its generated theme files remain Nix-managed while unrelated user
+settings remain writable.
 
 ## Adding a palette
 
@@ -76,7 +73,6 @@ Each application keeps its color mapping in its own feature module:
 - Alacritty, Fish, Starship, and tmux use the terminal colors.
 - GNOME's module uses the colors in GTK 3 CSS and libadwaita CSS variables.
 - VSCodium installs a local theme for workbench, syntax, and integrated terminal colors.
-- Zed installs and selects the chosen local theme.
 
 Fonts are configured separately; see [terminal fonts](../apps/terminal/README.md#fonts-and-colors).
 GNOME retains its upstream font defaults.
