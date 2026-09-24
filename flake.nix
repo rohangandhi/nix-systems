@@ -16,7 +16,7 @@
     };
   };
 
-  outputs = { self, ... }@inputs: {
+  outputs = inputs: {
     nixosConfigurations.zion-alpha = inputs.nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = {
@@ -87,80 +87,8 @@
       ];
     };
 
-    nixosConfigurations.example = inputs.nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {
-        inherit inputs;
-        my-options = {
-          name = "example";
-          display.scaling = "1";
-          user = { name = "demo"; uid = 1000; };
-          group = { name = "users"; gid = 100; };
-        };
-      };
-      # The complete example system is declared here, without an import bundle.
-      modules = [
-        # Nix and shared settings
-        ./zion/options.nix
-        ./zion/nix.nix
-
-        # Upstream modules
-        ./common/input-modules/impermanence.nix
-        ./common/input-modules/disko.nix
-        ./common/input-modules/home-manager.nix
-        ./common/input-modules/home-manager/impermanence.nix
-
-        # VM hardware and demonstration login
-        "${inputs.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
-        ./examples/vm.nix
-
-        # Operating system
-        ./zion/os/fonts.nix
-        ./zion/os/networking.nix
-        ./zion/os/audio.nix
-        ./zion/os/users.nix
-        ./zion/os/proxy.nix
-
-        # Desktop
-        ./common/desktop/gnome.nix
-
-        # Browser
-        ./common/apps/browser/firefox.nix
-        ./common/apps/browser/chromium.nix
-
-        # Terminal
-        ./common/apps/terminal/fastfetch.nix
-        ./common/apps/terminal/alacritty.nix
-        ./common/apps/terminal/tmux.nix
-        ./common/apps/terminal/fish.nix
-        ./common/apps/terminal/starship.nix
-        ./common/apps/terminal/commands.nix
-
-        # Development
-        ./common/apps/development/codium.nix
-        ./common/apps/development/codex.nix
-        ./common/apps/development/kiro.nix
-        ./common/apps/development/zed.nix
-
-        # VM launchers
-        ./matrix/one/commands.nix
-
-        # Miscellaneous applications
-        ./common/apps/container.nix
-        ./common/apps/git.nix
-        ./common/apps/app-image.nix
-        ./common/apps/qalculate.nix
-      ];
-    };
-
-    packages.x86_64-linux.example-vm = self.nixosConfigurations.example.config.system.build.vm;
-    templates.workstation = {
-      path = ./templates/workstation;
-      description = "Standalone workstation with explicit user, storage, and hardware settings";
-    };
-
-    # Existing module exports for external consumers. Our system declarations
-    # list their modules directly above and in the template's flake.nix.
+    # Existing module exports for external consumers. The host declaration
+    # lists its modules directly above.
     nixosModules.default = {
       imports = [
         ./zion/options.nix
