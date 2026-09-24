@@ -7,6 +7,16 @@ Read [TENETS.md](TENETS.md) before making changes.
 
 Feature files contain settings; `flake.nix` selects them explicitly.
 
+## Guides
+
+- [Storage and persistence](zion/hardware/README-impermanence.md): current disk layout, migration ordering, and diagnosing lost application state.
+- [Editor settings and state](common/apps/development/README.md): VSCodium and Zed settings ownership, extensions, and workspace trust.
+- [Terminal usage](common/apps/terminal/README.md): Fish shortcuts, optional tmux, the prompt, and fonts.
+- [Shared themes](common/theme/README.md): select, disable, or add a palette and understand its application coverage.
+
+Keep operational details in these feature guides, implementation reasons beside
+the relevant code, and architectural principles in [TENETS.md](TENETS.md).
+
 ## Installation
 
 `install.sh <flake-path#host>` installs into already-mounted `/mnt`; it never partitions or formats a disk. It prompts for the root password. Prepare storage separately and set your normal user's credentials in your host configuration first.
@@ -41,6 +51,10 @@ Launcher authentication setup is shared locally in `matrix/one/commands.nix`; ea
 nix flake update
 ```
 
+The impermanence input is deliberately pinned to a specific revision in
+`flake.nix`. An ordinary lock-file update keeps that revision; changing it needs
+the [persistence migration review](zion/hardware/README-impermanence.md#why-impermanence-is-pinned).
+
 For local consumers, use `--override-input public ../systems --no-write-lock-file` when building or switching from a sibling checkout. This reads current edits without a commit or push; newly added files must be staged so Nix can include them. A local path input without the override still uses its locked snapshot.
 
 Validate the owner's complete configuration from the private checkout:
@@ -52,3 +66,25 @@ nix flake check --no-build --override-input public ../systems --no-write-lock-fi
 The public host's locked password placeholder intentionally requires credentials from the private extension before the complete host can pass validation.
 
 Remote consumers can pin this repository and update that input explicitly. Configure your own hardware, storage, preferences, and credentials before using these modules on another machine.
+
+## What validation proves
+
+Use the local override above for Nix checks, builds, and switches. The private checkout's README holds
+the owner's build, switch, and rollback commands.
+
+| Stage | What it establishes | What still needs checking |
+| --- | --- | --- |
+| `nix flake check --no-build` | Configuration evaluation, types, assertions, and flake-output checks | Does not build the system or run activation. |
+| Build `nixosConfigurations.zion-alpha.config.system.build.toplevel` | The selected system closure can be built or fetched | The running system and application state have not changed. |
+| `nixos-rebuild switch` | The generation is activated and activation scripts run | Check affected services and applications; existing processes can retain old settings. |
+| Reboot, then reopen affected applications | Startup mounts, recreated home paths, and application state can be checked across a boot | Verify the specific state that should survive, such as a saved preference or trusted workspace. |
+
+Choose checks for the change. For an editor-state change, test saving a preference
+and reopening the editor. For persistence changes, also verify the backing mount
+and survival across a reboot. For palette changes, exercise both palettes and
+`null`, including the transition back to native colors. Documentation-only edits
+need link, example, and consistency checks.
+
+Report which stages actually ran. A system-generation rollback does not restore
+an earlier copy of mutable application data; persistence and data backups are
+separate concerns.
