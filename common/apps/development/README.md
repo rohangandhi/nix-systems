@@ -25,69 +25,79 @@ contain their normal nested configuration.
 
 ## VSCodium
 
+### Installation and ownership
+
+[codium.nix](codium.nix) installs the normal Nix package through Home Manager,
+Nix IDE, and Svelte. Nix updates the application. The extensions directory and
+settings file are writable so the editor can install extensions and save UI
+preferences. Rebuilds reapply the small declared baseline; other preferences
+survive. No wrapper, custom profile path, or database-migration hook is needed.
+
+The baseline disables telemetry, selects Fish for the integrated terminal, and
+sets the Noto Sans Mono Nerd Font family and weights. Extension update checks
+are explicitly enabled. File associations are left to the desktop's defaults
+and the user's choices.
+
 ### State locations
 
-The configured package uses three home directories, all declared for persistence:
+The host's [filesystem.nix](../../../zion/hardware/filesystem.nix) persists all
+three native directories:
 
 | Location | Purpose |
 | --- | --- |
-| `~/.config/VSCodium` | User settings, workspace/session state, and unsaved-file recovery. Settings are in `User/settings.json`. |
+| `~/.config/VSCodium` | Writable user settings, workspace/session state, extension state, and unsaved-file recovery. |
 | `~/.vscode-oss` | Installed extensions and launcher arguments. |
 | `~/.vscode-oss-shared` | Shared application state, including workspace trust in `sharedStorage/state.vscdb`. |
 
-The trust database is separate from the main profile. Losing it can cause the
-same directory to require trust again even though extensions and preferences
-survive. The [persistence guide](../../../zion/hardware/README-impermanence.md)
-explains the migration and mount checks. Trust stays enabled; the migration
-preserves existing decisions rather than adding trusted directories.
+`User/settings.json` is a regular file inside the first directory. Keeping only
+that directory misses workspace trust. Trust stays enabled, with no pretrusted
+folders. Logs under `~/.local/state/VSCodium` are temporary. The
+[persistence guide](../../../zion/hardware/README-impermanence.md) describes mount
+checks. Profile resets are deliberate operations, never part of a rebuild.
 
-### Settings migration and recovery
+### Nix editing
 
-`profiles.default.mutableUserSettings = true` makes `User/settings.json` writable.
-When moving from the previous generated symlink, Home Manager's link cleanup
-removes the obsolete managed link before its settings merger writes a regular
-file. The parent profile directory remains persistent.
+Nix IDE uses `nil` for diagnostics, navigation, and local completion, and
+`nixfmt` for formatting. Both have explicit store paths. Automatic flake
+archiving, input evaluation, and NixOS-option evaluation are disabled in the
+baseline. Opening a Nix file does not need to evaluate this machine's NixOS and
+Home Manager configuration.
 
-Close VSCodium before this migration or other changes to its storage layout.
-After switching, `settings.json` should no longer resolve into `/nix/store`.
+This trades automatic host-option and package completion for a simpler default.
+Projects that need deeper completion can configure their language server in
+`.vscode/settings.json`. The editor configuration does not depend on the host's
+name, a checkout location, or a source snapshot of the host flake.
 
-The old read-only setup could leave a recovered, unsaved settings tab after an
-editor settings migration. Fixing the file on disk does not discard that buffer.
-Review the recovered draft, save any wanted edits separately, and close or revert
-the stale tab. Avoid replacing the entire new settings file with an old draft.
-The configured built-in fallback theme is `Dark Modern`; the older
-`Default Dark Modern` name prompted a migration in the package we audited.
+### Palette
 
-### Extensions and Nix support
+The flake separately selects [the VSCodium theme module](../../theme/codium.nix).
+It supplies the `local.shared-palette` extension, which inherits the bundled
+Dark Modern theme and applies the selected shared palette. The application
+module remains usable without that theme module.
 
-Nix supplies VSCodium, the Nix IDE and Svelte extensions, and the local palette
-extension when enabled. Application updates come through the flake. The
-extensions directory remains mutable, so additional installations and extension
-updates are available through the UI.
+Disabling the shared palette selects `Dark Modern` and removes the palette
+extension. Keeping colors in an extension avoids stale nested color overrides
+in mutable settings. Close and reopen the editor after changing the extension
+list or palette. Use the [shared theme guide](../../theme/README.md) to select a
+palette or return to native colors.
 
-Nix IDE uses explicit store paths for `nixd` and `nixfmt`, with Nix IDE selected as
-the Nix formatter. Package completion follows the pinned nixpkgs input. NixOS and
-Home Manager option completion use the **public configuration snapshot from the
-build**, independent of the checkout's location. Newly edited options appear in
-that snapshot after a rebuild. A project's `.vscode/settings.json` can override
-`nix.serverSettings` to inspect a different or live flake.
+### Busy pointer on GNOME
 
-### Palette lifecycle
+The upstream launchers advertise `StartupNotify=true`. GNOME can keep showing
+its busy pointer after an Electron window is already ready. The application
+module generates user-level copies of both upstream desktop entries with
+`StartupNotify=false`; launcher actions, icons, and URL handling are retained.
+This changes launch feedback rather than disabling background editor work.
 
-The local `local.shared-palette` extension contributes the `Shared Palette` theme,
-labelled with the selected palette's name. It inherits the bundled Dark Modern
-theme and changes workbench, syntax, and terminal colors. Color mappings live in
-the theme instead of being merged into mutable user settings.
+To investigate actual delays, use **Developer: Startup Performance** and
+**Developer: Show Running Extensions**. Logs distinguish application startup,
+extension activation, language-server work, and filesystem errors. In
+particular, projects on network shares can have file-watcher limitations that
+are separate from a lingering startup cursor.
 
-Disabling the palette explicitly selects `Dark Modern` and removes the local
-extension. Home Manager refreshes the extension registry when its declared
-extension list changes. Close and reopen the editor when testing these changes;
-changing extension symlinks alone can leave a cached extension list.
+### Isolated checks
 
-### Testing without changing the active profile
-
-Give a disposable VSCodium instance separate user, extension, and shared-data
-directories. `--user-data-dir` alone does not isolate the workspace trust store:
+Give a disposable instance separate user, extension, and shared-data directories:
 
 ```sh
 codium --user-data-dir /tmp/codium-check/user-data \
@@ -95,10 +105,9 @@ codium --user-data-dir /tmp/codium-check/user-data \
   --shared-data-dir /tmp/codium-check/shared-data
 ```
 
-Populate that profile with the generated settings and extensions under test.
-Verify that a UI setting can be saved, a trusted test workspace remains trusted
-after reopening, and palette transitions work. Temporary-profile tests establish
-editor behavior; persistence across a host reboot still needs a separate check.
+`--user-data-dir` alone does not isolate workspace trust. Test writable settings,
+language-server formatting, palette selection, and trust across reopening.
+Host persistence across reboot requires a separate check.
 
 ## Zed
 

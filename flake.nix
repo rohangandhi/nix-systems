@@ -75,6 +75,7 @@
 
         # Development
         ./common/apps/development/codium.nix
+        ./common/theme/codium.nix
         ./common/apps/development/codex.nix
         ./common/apps/development/kiro.nix
         ./common/apps/development/zed.nix
@@ -131,6 +132,7 @@
         ./common/apps/terminal/starship.nix
         ./common/apps/terminal/commands.nix
         ./common/apps/development/codium.nix
+        ./common/theme/codium.nix
         ./common/apps/development/codex.nix
         ./common/apps/development/kiro.nix
         ./common/apps/development/zed.nix

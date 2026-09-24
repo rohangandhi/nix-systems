@@ -63,19 +63,16 @@ them together with the module imports when changing the pin.
 5. Evaluate and build, activate, and inspect the actual mount. Verify the saved
    state after reopening the application and after a reboot.
 
-Existing migration hooks illustrate two different ordering requirements:
+The `persistFishVariables` hook runs after `writeBoundary` and before
+`linkGeneration`. It seeds the persistent `fish_variables` file from existing
+state, or creates an empty file on first use. Fish's atomic universal-variable
+writes need an existing symlink target; a dangling persistence link can be
+replaced by a local file whose contents then disappear on reboot.
 
-- `persistVscodiumSharedStorage` runs before
-  `createAndMountPersistentStoragePaths`. It copies the current trust database
-  with SQLite's backup API only when the persistent database is absent, then
-  installs the snapshot atomically. Workspace trust lives in
-  `~/.vscode-oss-shared/sharedStorage/state.vscdb` with the configured VSCodium
-  package. Persisting only `~/.config/VSCodium` misses it.
-- `persistFishVariables` runs after `writeBoundary` and before `linkGeneration`.
-  It seeds the persistent `fish_variables` file from existing state, or creates
-  an empty file on first use. Fish's atomic universal-variable writes need an
-  existing symlink target; a dangling persistence link can be replaced by a local
-  file whose contents then disappear on reboot.
+VSCodium needs no custom activation hook on a fresh installation. Its three
+directories are mounted before Home Manager writes settings or the editor starts.
+Workspace trust lives in `~/.vscode-oss-shared/sharedStorage/state.vscdb` with the
+configured package. Persisting only `~/.config/VSCodium` misses it.
 
 ## Diagnose state that does not survive
 
@@ -95,8 +92,8 @@ file should be under `/p-home/ephemeral/.config/fish/`. A mount can work correct
 while another application state directory is missing from persistence.
 
 [The editor guide](../../common/apps/development/README.md) covers writable
-settings, workspace trust, and stale recovered settings buffers. Repeated prompts
-or reopened tabs do not by themselves establish that the entire profile was lost.
+settings and workspace trust. Repeated prompts or reopened tabs do not by
+themselves establish that the entire profile was lost.
 
 Persistent storage survives reboot; it is not a backup. Rolling back a NixOS
 generation changes configuration and packages, not the contents of mutable

@@ -51,10 +51,11 @@ declaration alone can leave its previous value on disk, including nested color
 overrides. The palette therefore lives in a native theme, with an explicit
 built-in theme selection when disabled.
 
-VSCodium installs `local.shared-palette`, with the stable theme ID `Shared Palette`
-and the selected palette as its display name. It inherits Dark Modern's remaining
-colors and syntax rules. Zed writes `themes/shared-palette.json`. Their generated
-theme files remain Nix-managed while unrelated user settings remain writable.
+The separately selected [VSCodium theme module](codium.nix) installs
+`local.shared-palette`, with the stable theme ID `Shared Palette` and the selected
+palette as its display name. It inherits Dark Modern's remaining colors and
+syntax rules. Zed writes `themes/shared-palette.json`. Their generated theme files
+remain Nix-managed while unrelated user settings remain writable.
 
 ## Adding a palette
 
