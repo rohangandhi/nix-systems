@@ -24,8 +24,9 @@ Editor windows may need to be reloaded.
 ## What turning it off does
 
 `null` removes GTK CSS, GNOME's custom accent, Alacritty colors, Fish color
-overrides, tmux styling, and VSCodium color overrides. Starship keeps its compact
-layout with built-in module styles. Zed explicitly selects its built-in One Light
+overrides, and tmux styling. VSCodium selects Dark Modern and removes the local
+palette theme; its writable settings retain unrelated UI preferences. Starship
+keeps its compact layout with built-in module styles. Zed explicitly selects its built-in One Light
 and One Dark themes in system mode, because its mutable settings otherwise retain
 the previous selection. Its generated palette theme is removed.
 
@@ -52,7 +53,7 @@ Each application keeps its color mapping in its own feature module:
 
 - Alacritty, Fish, Starship, and tmux use the terminal colors.
 - GNOME's module uses the colors in GTK 3 CSS and libadwaita CSS variables.
-- VSCodium uses workbench, syntax, and integrated terminal color settings.
+- VSCodium installs a local theme for workbench, syntax, and integrated terminal colors.
 - Zed installs and selects the chosen local theme.
 
 Fonts are configured separately. GNOME retains its default Adwaita fonts.

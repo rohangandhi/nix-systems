@@ -222,6 +222,38 @@
   # --exclude "{.local/share,.mozilla,.cursor,.config/VSCodium,.lmstudio,.cache}"
 
   home-manager.users.${my-options.user.name} = { lib, my-options, ... }: {
+    # Recent VSCodium versions keep workspace trust outside .config/VSCodium.
+    # Seed the new persistent database before bindfs hides the current directory.
+    # SQLite's backup API also preserves committed data when the editor is open.
+    home.activation.persistVscodiumSharedStorage = lib.hm.dag.entryBefore
+      [ "createAndMountPersistentStoragePaths" ] ''
+        codium_shared_source="$HOME/.vscode-oss-shared/sharedStorage/state.vscdb"
+        codium_shared_target="/p-home/${my-options.user.name}/.vscode-oss-shared/sharedStorage/state.vscdb"
+        if [[ -f "$codium_shared_source" && ! -e "$codium_shared_target" ]]; then
+          run ${pkgs.python3}/bin/python3 - "$codium_shared_source" "$codium_shared_target" <<'PY'
+        import os
+        from contextlib import closing
+        from pathlib import Path
+        import sqlite3
+        import sys
+        import tempfile
+
+        source, target = map(Path, sys.argv[1:])
+        os.umask(0o077)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".trust-migration-", dir=target.parent)
+        os.close(fd)
+        try:
+            with closing(sqlite3.connect(source.as_uri() + "?mode=ro", uri=True)) as src:
+                with closing(sqlite3.connect(temporary)) as dst:
+                    src.backup(dst)
+            os.replace(temporary, target)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+        PY
+        fi
+      '';
+
     # Fish needs an existing target for its atomic universal-variable writes.
     # Preserve any current settings before Home Manager replaces the local file.
     home.activation.persistFishVariables = lib.hm.dag.entryBetween
@@ -261,6 +293,7 @@
         ".config/Code"
 
         ".vscode-oss"
+        ".vscode-oss-shared"
         ".config/VSCodium"
 
         ".config/zed"

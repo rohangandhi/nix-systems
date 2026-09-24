@@ -1,8 +1,11 @@
-{ config, lib, my-options, ... }:
+{ config, inputs, lib, my-options, ... }:
 let
   theme = config.my-theme;
   palette = theme.colors;
   colors = builtins.mapAttrs (_: hex: "#${hex}") palette;
+  # Use the public configuration from this build, independent of checkout location.
+  # A project's .vscode/settings.json can override this to inspect its own flake.
+  hostOptions = ''(builtins.getFlake "${inputs.self}").nixosConfigurations.${my-options.name}.options'';
 in {
 
   xdg.mime.defaultApplications = {
@@ -20,35 +23,14 @@ in {
     "application/xml" = "codium.desktop";
   };
 
-  # TODO: use vscode in docker.
-
-  # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-dockerTools
-  # https://github.com/coder/code-server
-  # https://github.com/gitpod-io/openvscode-server
-  # https://github.com/linuxserver/docker-vscodium
-
-  # podman run -it --userns=keep-id --user 1001:999 --name code-server -p 127.0.0.1:8080:8080 \
-  #   -v "$PWD/.local:/home/coder/.local:z" \
-  #   -v "$PWD/.config:/home/coder/.config:z" \
-  #   -v "$PWD/project:/home/coder/project:z" \
-  #   docker.io/codercom/code-server:latest
-
-  # podman run -it --init --userns=keep-id --user 1001:999 --name openvscode-server -p 3000:3000 \
-  #   -v "$PWD:/home/workspace:z" \
-  #   docker.io/gitpod/openvscode-server
-
-  home-manager.users.${my-options.user.name} = { pkgs, ... }: {
-
-    programs.vscodium.enable = true;
-    programs.vscodium.mutableExtensionsDir = true;
-    programs.vscodium.package = pkgs.vscodium;
-    programs.vscodium.profiles.default.enableExtensionUpdateCheck = false;
-    programs.vscodium.profiles.default.enableUpdateCheck = false;
-
-    programs.vscodium.profiles.default.userSettings = {
-
-      workbench.colorTheme = "Default Dark Modern";
-      "workbench.colorCustomizations" = lib.mkIf theme.enabled {
+  home-manager.users.${my-options.user.name} = { pkgs, ... }:
+  let
+    # A theme keeps colors out of mutable settings.json. Switching palettes or
+    # turning them off then needs only a change to workbench.colorTheme.
+    paletteTheme = pkgs.writeText "vscodium-shared-palette.json" (builtins.toJSON {
+      name = theme.name;
+      include = "./dark_modern.json";
+      colors = {
         "foreground" = colors.foreground;
         "descriptionForeground" = colors.muted;
         "focusBorder" = colors.accent;
@@ -127,36 +109,88 @@ in {
         "terminal.ansiBrightCyan" = colors.cyan;
         "terminal.ansiBrightWhite" = colors.brightWhite;
       };
-      "editor.tokenColorCustomizations" = lib.mkIf theme.enabled {
-        comments = colors.muted;
-        strings = colors.yellow;
-        keywords = colors.magenta;
-        numbers = colors.yellow;
-        types = colors.cyan;
-        functions = colors.blue;
-        variables = colors.foreground;
+      # Match VSCodium's scopes for the former tokenColorCustomizations groups.
+      tokenColors = [
+        { scope = [ "comment" "punctuation.definition.comment" ]; settings.foreground = colors.muted; }
+        { scope = [ "string" "meta.embedded.assembly" ]; settings.foreground = colors.yellow; }
+        { scope = [ "keyword - keyword.operator" "keyword.control" "storage" "storage.type" ]; settings.foreground = colors.magenta; }
+        { scope = [ "constant.numeric" ]; settings.foreground = colors.yellow; }
+        { scope = [ "entity.name.type" "entity.name.class" "support.type" "support.class" ]; settings.foreground = colors.cyan; }
+        { scope = [ "entity.name.function" "support.function" ]; settings.foreground = colors.blue; }
+        { scope = [ "variable" "entity.name.variable" ]; settings.foreground = colors.foreground; }
+      ];
+    });
+    paletteManifest = pkgs.writeText "vscodium-shared-palette-package.json" (builtins.toJSON {
+      name = "shared-palette";
+      publisher = "local";
+      version = "1.0.0";
+      engines.vscode = "^1.90.0";
+      displayName = "Shared Palette";
+      contributes.themes = [{
+        id = "Shared Palette";
+        label = theme.name;
+        uiTheme = "vs-dark";
+        path = "./themes/shared-palette.json";
+      }];
+    });
+    paletteExtension = pkgs.runCommandLocal "vscode-extension-local-shared-palette" {
+      version = "1.0.0";
+      passthru = {
+        vscodeExtPublisher = "local";
+        vscodeExtName = "shared-palette";
+        vscodeExtUniqueId = "local.shared-palette";
       };
+    } ''
+      extension="$out/share/vscode/extensions/local.shared-palette"
+      mkdir -p "$extension"
+      cp -r ${pkgs.vscodium}/lib/vscode/resources/app/extensions/theme-defaults/themes "$extension/themes"
+      chmod u+w "$extension/themes"
+      cp ${paletteTheme} "$extension/themes/shared-palette.json"
+      cp ${paletteManifest} "$extension/package.json"
+    '';
+  in {
 
-      window.menuBarVisibility = "toggle";
+    programs.vscodium.enable = true;
+    programs.vscodium.mutableExtensionsDir = true;
+    programs.vscodium.package = pkgs.vscodium;
+    # The flake supplies the application and these baseline extensions.
+    # Additional extensions and extension updates remain available in the UI.
+    programs.vscodium.profiles.default.extensions = [
+      pkgs.vscode-extensions.jnoortheen.nix-ide
+      pkgs.vscode-extensions.svelte.svelte-vscode
+    ] ++ lib.optional theme.enabled paletteExtension;
+    programs.vscodium.profiles.default.enableExtensionUpdateCheck = true;
+    programs.vscodium.profiles.default.enableUpdateCheck = false;
 
-      svelte.enable-ts-plugin = true;
+    # Home Manager reapplies these settings on rebuild; other UI preferences survive.
+    # Its link cleanup removes the old read-only settings symlink during migration.
+    programs.vscodium.profiles.default.mutableUserSettings = true;
+    programs.vscodium.profiles.default.userSettings = {
 
-      nix.enableLanguageServer = true;
-      nix.serverPath = "nixd";
-      nix.serverSettings = {
-        nil = {
-          diagnostics = {
-            ignored = [ "unused_with" ];
-          };
-          formatting = {
-            command = [ "nixpkgs-fmt" ];
-          };
-        };
+      "telemetry.telemetryLevel" = "off";
+      "workbench.colorTheme" = if theme.enabled then "Shared Palette" else "Dark Modern";
+
+      "window.menuBarVisibility" = "toggle";
+
+      "terminal.integrated.defaultProfile.linux" = "fish";
+      "terminal.integrated.profiles.linux".fish.path = lib.getExe pkgs.fish;
+      "terminal.integrated.fontFamily" = "NotoSansM Nerd Font Mono";
+      # VSCodium uses pixels; Alacritty's 11 pt is approximately 15 px.
+      "terminal.integrated.fontSize" = 15;
+      "terminal.integrated.fontWeight" = "300";
+      "terminal.integrated.fontWeightBold" = "500";
+
+      "svelte.enable-ts-plugin" = true;
+
+      "[nix]"."editor.defaultFormatter" = "jnoortheen.nix-ide";
+      "nix.enableLanguageServer" = true;
+      "nix.serverPath" = lib.getExe pkgs.nixd;
+      "nix.serverSettings" = {
         nixd = {
-          options.nixos.expr = "(builtins.getFlake \"/home/ephemeral/n-data/nix/systems\").nixosConfigurations.zion-alpha.options";
-          formatting = {
-            command = [ "nixpkgs-fmt" ];
-          };
+          nixpkgs.expr = ''import ${inputs.nixpkgs} { system = "${pkgs.stdenv.hostPlatform.system}"; }'';
+          options.nixos.expr = hostOptions;
+          options.home-manager.expr = "(${hostOptions}).home-manager.users.type.getSubOptions []";
+          formatting.command = [ (lib.getExe pkgs.nixfmt) ];
         };
       };
     };
