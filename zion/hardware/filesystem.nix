@@ -130,6 +130,19 @@ in {
       neededForBoot = false;
     };
 
+    # Shared model weights and Windows files on the Samsung 990 PRO 2TB.
+    # Managed separately from disko: preserve Windows and the existing NTFS data.
+    "/p-shared" = {
+      device = "/dev/disk/by-uuid/0000000000000001";
+      fsType = "ntfs3";
+      options = [
+        "nosuid" "nodev" "windows_names"
+        "uid=${toString my-options.user.uid}"
+        "gid=${toString my-options.group.gid}"
+        "umask=0022" "nofail" "x-systemd.device-timeout=5s"
+      ];
+    };
+
     # Data - Local
     "/home/${my-options.user.name}/p-data" = {
       device = "/p-data";
@@ -164,6 +177,8 @@ in {
     "L /persist/os - - - - /p-os"
     "L /persist/home - - - - /p-home"
     "L /persist/data - - - - /p-data"
+    "L /persist/shared - - - - /p-shared"
+    "L /home/${my-options.user.name}/p-shared - - - - /p-shared"
     # The default Steam library is large; keep it off the home filesystem.
     "d /p-data/steam 0700 ${my-options.user.name} ${my-options.group.name} -"
     "d /p-data/steam/steamapps 0700 ${my-options.user.name} ${my-options.group.name} -"
