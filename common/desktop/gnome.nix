@@ -5,6 +5,20 @@ let
   colors = builtins.mapAttrs (_: hex: "#${hex}") palette;
 in {
 
+  # GDM 50.3 fixes reuse of systemd's cached LUKS passphrase during autologin.
+  # Remove this override once the pinned nixpkgs provides 50.3 or newer.
+  nixpkgs.overlays = [ (_final: prev: {
+    gdm = if lib.versionOlder prev.gdm.version "50.3" then
+      prev.gdm.overrideAttrs {
+        version = "50.3";
+        src = prev.fetchurl {
+          url = "mirror://gnome/sources/gdm/50/gdm-50.3.tar.xz";
+          hash = "sha256-rawHELi3lxCOpA6kVzvRpebZsk4KeZCplCFujf/i0V4=";
+        };
+      }
+    else prev.gdm;
+  }) ];
+
   services.displayManager.gdm.enable = true;
   # services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;

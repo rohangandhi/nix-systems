@@ -146,7 +146,7 @@ in {
         gid = "${toString my-options.group.gid}";
       in
       {
-        device = "//192.168.0.108/zion";
+        device = "//192.0.2.108/zion";
         fsType = "cifs";
         options = [ "${automount_opts},uid=${uid},gid=${gid}" ];
       };

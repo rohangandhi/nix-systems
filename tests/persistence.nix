@@ -61,7 +61,7 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
         };
         "/home/ephemeral/n-data" = {
           inherit (networkShare) fsType options;
-          device = "//server/zion";
+          device = "//server/fixture-share";
         };
       };
     };
@@ -74,8 +74,8 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       openFirewall = true;
       settings = {
         global."map to guest" = "Bad User";
-        zion = {
-          path = "/srv/zion";
+        fixture-share = {
+          path = "/srv/fixture-share";
           "read only" = true;
           "guest ok" = "yes";
         };
@@ -96,7 +96,7 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
 
       server.start()
       server.wait_for_unit("samba.target")
-      server.succeed("mkdir -p /srv/zion/wallpapers; echo fixture-wallpaper > /srv/zion/${wallpaper}")
+      server.succeed("mkdir -p /srv/fixture-share/wallpapers; echo fixture-wallpaper > /srv/fixture-share/${wallpaper}")
       machine.start(allow_reboot=True)
       machine.wait_for_unit("multi-user.target")
       machine.wait_for_unit("home-manager-ephemeral.service")

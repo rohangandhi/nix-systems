@@ -146,5 +146,6 @@
     nixosModules.matrix-commands = ./matrix/one/commands.nix;
 
     checks.x86_64-linux.persistence = import ./tests/persistence.nix { inherit inputs; };
+    checks.x86_64-linux.keyring-autologin = import ./tests/keyring-autologin.nix { inherit inputs; };
   };
 }

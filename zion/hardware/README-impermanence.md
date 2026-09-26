@@ -43,7 +43,7 @@ working path mirrored beneath the storage root. These shortcuts do not change
 permissions; accessing root-owned system files still requires appropriate access.
 
 `n-data` remains a CIFS automount at `/home/ephemeral/n-data`, backed by
-`//192.168.0.108/zion`. Systemd orders the automount after the home filesystem and
+`//192.0.2.108/zion`. Systemd orders the automount after the home filesystem and
 the actual CIFS mount after `network-online.target`. Reading a file triggers the
 mount. Both GNOME wallpaper settings keep their existing `file:///home/ephemeral/n-data/wallpapers/...`
 paths; they do not move into `/p-home`. Access still requires the network server
@@ -139,11 +139,37 @@ existing persistent destination. Activate the mounts before restarting the
 services. Keep the keyring directory private (`0700`) and its files private
 (`0600`).
 
-Persistence does not unlock an encrypted login keyring. With GDM automatic login,
-unlock it when prompted; password login can unlock it through PAM when its
-password matches the login password. A blank Online Accounts panel can also mean
-the daemon is waiting on the keyring. Check its D-Bus response and the session
-journal before deleting accounts or keyrings; deleting them discards saved state.
+Persistence does not unlock an encrypted login keyring. This host keeps GDM
+automatic login and uses GDM's standard PAM support to pass the initrd's cached LUKS
+passphrase to GNOME Keyring. Keep the **Login keyring password equal to the
+disk-unlock passphrase**. The passphrase stays in systemd's temporary kernel
+keyring cache; it is not written into the Nix configuration or a password file.
+NixOS already gives GDM access to this cache with `KeyringMode=shared`.
+
+The GDM package override in `common/desktop/gnome.nix` updates 50.2 to 50.3, whose
+[release notes](https://download.gnome.org/sources/gdm/50/gdm-50.3.news) describe
+the fix for systemd's cache format. It leaves PAM configuration at NixOS defaults
+and defers to Nixpkgs when that provides 50.3 or newer; remove the override then.
+If the cache has expired or the passwords differ, automatic login still works
+and the keyring asks for its password. Logging out and back in later may also
+require unlocking it. Password login can unlock it when its password matches the
+login password. Changing the declarative login password does not change the
+keyring password.
+
+After rebuilding for boot and rebooting, `journalctl -b --grep=gkr-pam` should
+report that the login keyring was unlocked. A blank Online Accounts panel can
+mean the daemon is waiting on the keyring. Check its D-Bus response and the
+session journal before deleting accounts or keyrings; deleting them discards
+saved state.
+
+The collection ID is case-sensitive: automatic login unlocks `login.keyring`.
+A manually created `Login.keyring` can have the same visible label while being a
+different collection and the default for applications. Check both aliases with
+`busctl --user call org.freedesktop.secrets /org/freedesktop/secrets org.freedesktop.Secret.Service ReadAlias s login`
+and the same command ending in `default`. If they differ, inspect the collections
+before repairing them. Back up the encrypted files and stop the desktop and
+keyring daemon before any file rename. Never overwrite a populated collection;
+changing only the default alias does not change which collection PAM unlocks.
 
 ## Diagnose state that does not survive
 
