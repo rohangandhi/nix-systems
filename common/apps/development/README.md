@@ -1,11 +1,29 @@
-# Editor settings and state
+# Development applications
 
 The public [flake](../../../flake.nix) selects the development applications.
-[codium.nix](codium.nix) owns VSCodium's editor settings;
-[filesystem.nix](../../../zion/hardware/filesystem.nix) owns persistence.
-Use the [shared theme guide](../../theme/README.md) for palette selection.
+Each application's module owns its package selection and settings;
+[filesystem.nix](../../../zion/hardware/filesystem.nix) declares the host's
+persistent state. Use the main README's
+[build and switch workflow](../../../README.md#build-and-switch-this-workstation)
+to apply changes.
 
-## Nix settings and UI settings
+## Configured applications
+
+| Application | Module and baseline |
+| --- | --- |
+| VSCodium | [codium.nix](codium.nix): writable settings, Nix IDE and Svelte extensions, `nil` language server, and `nixfmt`. |
+| Codex | [codex.nix](codex.nix): desktop application from the pinned `codex-desktop-linux` input, plus the `pkgs.codex` CLI. |
+
+Both desktop applications are pinned in
+[GNOME's favorites](../../desktop/gnome.nix), using `codium.desktop` and
+`codex-desktop.desktop`. The dock declaration takes effect on system activation.
+
+VSCodium's palette is a separate selection in the flake:
+[common/theme/codium.nix](../../theme/codium.nix). Use the
+[shared theme guide](../../theme/README.md) to switch palettes or use native
+colors. Terminal fonts remain application settings, independent of the palette.
+
+## Settings ownership
 
 VSCodium uses Home Manager's mutable-settings support. On activation,
 Home Manager merges the declared settings into the saved settings file:
@@ -32,6 +50,9 @@ Nix IDE, and Svelte. Nix updates the application. The extensions directory and
 settings file are writable so the editor can install extensions and save UI
 preferences. Rebuilds reapply the small declared baseline; other preferences
 survive. No wrapper, custom profile path, or database-migration hook is needed.
+
+The application module works with its built-in Dark Modern theme when the
+separate palette module is not selected.
 
 The baseline disables telemetry, selects Fish for the integrated terminal, and
 sets the Noto Sans Mono Nerd Font family and weights. Extension update checks
@@ -108,3 +129,26 @@ codium --user-data-dir /tmp/codium-check/user-data \
 `--user-data-dir` alone does not isolate workspace trust. Test writable settings,
 language-server formatting, palette selection, and trust across reopening.
 Host persistence across reboot requires a separate check.
+
+## Codex
+
+[codex.nix](codex.nix) enables `programs.codexDesktopLinux` from the
+`codex-desktop-linux` flake input and installs `pkgs.codex` for terminal use.
+The desktop integration and CLI have separate package sources; update their
+repository-managed versions through the public flake's inputs, then rebuild.
+
+The host declares `~/.codex` for persistence in
+[filesystem.nix](../../../zion/hardware/filesystem.nix). Keep application data
+separate from package configuration when changing or removing this module.
+
+## Adding or removing an application
+
+1. Update the explicit host module list and the exported `nixosModules.workstation`
+   list in [flake.nix](../../../flake.nix). Keep application configuration in its
+   feature module.
+2. Update [GNOME's favorites](../../desktop/gnome.nix) when its dock entry should
+   change. Use the installed package's actual desktop-file ID.
+3. Review persistence paths and any shared-theme integration. Removing a package
+   does not itself delete its saved data; data cleanup is a separate decision.
+4. Update this guide, validate the complete host from the private checkout, and
+   switch generations. Reopen affected applications to load the new setup.

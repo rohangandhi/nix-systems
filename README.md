@@ -3,19 +3,74 @@
 Flat, explicit NixOS configuration for a GNOME workstation and an isolated development VM.
 Read [TENETS.md](TENETS.md) before making changes.
 
-`flake.nix` contains the main `zion-alpha` host declaration: identity, inputs, and every selected public module. Hardware, storage, and personal preferences are public. Credentials and private services are supplied by a separate, small private extension. The public host uses a locked password placeholder; use the private extension when rebuilding the owner's machine.
+[`flake.nix`](flake.nix) contains the main `zion-alpha` host declaration: identity,
+inputs, and every selected public module. Hardware, storage, and personal
+preferences are public. Credentials and private services are supplied by a
+separate, small private extension. The public host uses a locked password
+placeholder; use the private extension when rebuilding the owner's machine.
 
 Feature files contain settings; `flake.nix` selects them explicitly.
+
+## Current workstation
+
+| Area | Configuration |
+| --- | --- |
+| Desktop | GNOME, with Firefox, Files, Alacritty, VSCodium, and Codex pinned to the dock. |
+| Browsers | Firefox and Chromium with privacy policies and encrypted DNS that allows system-resolver fallback. |
+| Terminal | Alacritty starts Fish with Starship; tmux is optional. Terminals use Noto Sans Mono Nerd Font, while GNOME keeps its upstream font defaults. |
+| Editor | VSCodium with writable settings, Nix IDE, Svelte, and `nil`/`nixfmt` for Nix editing. |
+| Codex | Desktop application and CLI, selected through [codex.nix](common/apps/development/codex.nix). |
+| Colors | Shared Midnight Jade palette, with Nord or native application colors available through `my-theme.palette`. |
+| Isolation | The `matrix-one` development VM and rootless Podman. Container storage lives under `/p-data/containers/storage`. |
+| Persistence | Root and home use tmpfs; selected system and application state is backed by persistent storage. |
+
+VSCodium's [application module](common/apps/development/codium.nix) and
+[palette module](common/theme/codium.nix) are selected separately. The editor
+baseline does not evaluate this host's configuration for completion. Its native
+settings, extensions, and workspace-trust directories are persisted; the editor
+guide below explains ownership and optional project-specific configuration.
 
 ## Guides
 
 - [Storage and persistence](zion/hardware/README-impermanence.md): current disk layout, migration ordering, and diagnosing lost application state.
-- [Editor settings and state](common/apps/development/README.md): VSCodium settings ownership, extensions, and workspace trust.
+- [Development applications](common/apps/development/README.md): VSCodium and Codex, settings ownership, persistence, and dock integration.
 - [Terminal usage](common/apps/terminal/README.md): Fish shortcuts, optional tmux, the prompt, and fonts.
 - [Shared themes](common/theme/README.md): select, disable, or add a palette and understand its application coverage.
 
 Keep operational details in these feature guides, implementation reasons beside
 the relevant code, and architectural principles in [TENETS.md](TENETS.md).
+
+## Build and switch this workstation
+
+Keep the public `systems` and private `systems-private` checkouts side by side.
+From the private checkout, validate, build, and activate the complete host:
+
+```sh
+cd /home/ephemeral/n-data/nix/systems-private
+nix flake check --no-build --override-input public ../systems --no-write-lock-file
+nix build .#nixosConfigurations.zion-alpha.config.system.build.toplevel --no-link --override-input public ../systems --no-write-lock-file
+sudo nixos-rebuild switch --flake .#zion-alpha --override-input public ../systems --no-write-lock-file
+```
+
+Use the local override for every check, build, and switch. It reads current
+public edits without a commit or push; newly added files must be staged so Nix
+can include them. Without the override, the private flake uses its locked public
+snapshot. `--no-write-lock-file` leaves that saved lock unchanged.
+
+Editing or committing the configuration does not activate it. Application
+removals and dock changes take effect when switching; reopen affected
+applications to load their new settings. The public host's locked password
+placeholder requires the private credential extension for complete host
+validation.
+
+To return to the previous system generation:
+
+```sh
+sudo nixos-rebuild switch --rollback
+```
+
+This restores the previous packages and configuration, not an earlier copy of
+mutable application data.
 
 ## Installation
 
@@ -45,9 +100,12 @@ Guest network access is restricted to explicit forwards, including the host's lo
 
 Launcher authentication setup is shared locally in `matrix/one/commands.nix`; each command remains explicit.
 
-## Update
+## Update dependencies
+
+Update the public lock file from its checkout:
 
 ```sh
+cd /home/ephemeral/n-data/nix/systems
 nix flake update
 ```
 
@@ -55,22 +113,16 @@ The impermanence input is deliberately pinned to a specific revision in
 `flake.nix`. An ordinary lock-file update keeps that revision; changing it needs
 the [persistence migration review](zion/hardware/README-impermanence.md#why-impermanence-is-pinned).
 
-For local consumers, use `--override-input public ../systems --no-write-lock-file` when building or switching from a sibling checkout. This reads current edits without a commit or push; newly added files must be staged so Nix can include them. A local path input without the override still uses its locked snapshot.
-
-Validate the owner's complete configuration from the private checkout:
-
-```sh
-nix flake check --no-build --override-input public ../systems --no-write-lock-file
-```
-
-The public host's locked password placeholder intentionally requires credentials from the private extension before the complete host can pass validation.
+Then use the [build and switch workflow](#build-and-switch-this-workstation).
+Dependency updates change the lock file; they do not update the running system
+until a new generation is activated.
 
 Remote consumers can pin this repository and update that input explicitly. Configure your own hardware, storage, preferences, and credentials before using these modules on another machine.
 
 ## What validation proves
 
-Use the local override above for Nix checks, builds, and switches. The private checkout's README holds
-the owner's build, switch, and rollback commands.
+The [commands above](#build-and-switch-this-workstation) cover evaluation,
+building, activation, and rollback. Each stage establishes something different:
 
 | Stage | What it establishes | What still needs checking |
 | --- | --- | --- |
