@@ -29,6 +29,13 @@ a symlink so its atomic file replacements work.
 For example, `~/.config/VSCodium` is backed by
 `/p-home/home/ephemeral/.config/VSCodium`.
 
+`/p-home` is mounted by the system with `nosuid,nodev,exec`. Executable files in
+persisted directories are needed by application extensions and downloaded tools;
+set-user-ID bits and device nodes remain disabled. Do not add the `user` mount
+option: it implicitly enables `noexec,nosuid,nodev` unless later options override
+them, and the home bind mounts inherit those flags. After changing these flags,
+prepare a boot generation and reboot to recreate all home bind mounts.
+
 Open `/persist` in Files to browse all three persistent roots. For example,
 `/persist/home/home/ephemeral/.mozilla` and
 `/p-home/home/ephemeral/.mozilla` are the same files. The extra `home` is the
@@ -46,48 +53,52 @@ Persistence entries also cover manually installed applications. Removing an app
 module does not establish that its saved data is disposable. Keep the data and
 its persistence entry until its retirement is an explicit decision.
 
-## Upgrading from the legacy layout
+## Legacy layout and rollback
 
-The old `home-manager-v1` configuration stored data directly under
+This workstation has completed the persistence migration. The old
+`home-manager-v1` configuration stored data directly under
 `/p-home/ephemeral` and mounted it through per-user `bindfs` services. The current
 Impermanence module integrates with Home Manager automatically and uses system
 bind mounts. Its revision is recorded normally in [flake.lock](../../flake.lock).
 
-For the first upgrade, **prepare a boot generation instead of switching the
-running desktop**. Keep a backup of important persistent data. From the private
-checkout, with both repositories side by side:
+The completed migration moved the existing user directory to
+`/p-home/home/ephemeral`, preserving its contents and permissions, and left
+`/p-home/ephemeral -> home/ephemeral` for older generations. Keep that existing
+link while retaining those generations. The current configuration neither
+creates nor removes it, and fresh installations do not need it.
 
-```sh
-nix flake check --no-build --override-input public ../systems --no-write-lock-file
-sudo nixos-rebuild boot --flake .#zion-alpha --override-input public ../systems --no-write-lock-file
-sudo reboot
-```
+The one-time boot migration has been retired. Its implementation and original
+instructions remain in [commit 4e5dc87](https://github.com/rohangandhi/nix-systems/commit/4e5dc87).
+Normal updates use `nixos-rebuild switch`; mount-option changes require a reboot.
 
-Before NixOS activation on the next boot, `migrate-persistent-home.service` waits
-for `/p-home` to be mounted, renames `ephemeral` to `home/ephemeral` within that
-filesystem, and leaves `/p-home/ephemeral -> home/ephemeral` for older generations.
-There is one copy of the data. The rename preserves ownership, permissions, and
-contents, including saved directories no longer listed for persistence.
+A small activation guard refuses an unmigrated directory at `/p-home/ephemeral`.
+If restoring an old-layout backup, arrange the saved user directory at
+`/p-home/home/ephemeral` from a recovery environment before activation. Inspect
+both locations and preserve existing data; the guard does not merge, rename,
+or delete anything. The compatibility link lets an older generation reach the
+same current data, not an earlier version of it.
 
-The migration refuses to merge two existing home directories or follow an
-unexpected link. If it stops, inspect the reported paths from a recovery
-environment rather than deleting either directory. A completed migration is safe
-to repeat, and the compatibility link also lets an older boot generation reach
-the same current data. It does not restore an older version of that data.
-
-An activation guard rejects a live switch while the legacy directory is still
-in place. Fresh installations have no legacy data to move. Subsequent updates
-can use the normal `nixos-rebuild switch` workflow.
+Keep the migration backup and previous working generation until recovery copies
+are no longer needed. The local backup's `previous-system` link is also a Nix
+garbage-collection root. Removing that link releases its protection for the old
+system closure. A backup on `/p-data` shares the workstation's physical disk and
+is unencrypted; it does not protect against failure of that disk.
 
 Disko only prepares the actual filesystems and the install target's `/nix` bind
 mount. It no longer binds the entire saved home onto the installation home, nor
 runs bind mounts from the LUKS hook before filesystems are mounted. NixOS and
 Impermanence create the home directories during activation.
 
-The disposable VM check covers migration, compatibility paths, permissions,
-the browsing shortcuts, and persistence across a reboot. It also uses a test SMB
-server and the workstation's actual CIFS options to read the wallpaper path as
-the normal user before and after reboot.
+## Persistence checks
+
+The disposable VM check starts with an empty backing disk and exercises fresh
+home creation, ownership and private file permissions, executable extension
+tools, Fish's atomic universal-variable updates, the browsing shortcuts, and
+persistence across a reboot. It checks rejection of an unmigrated directory and
+preservation of an existing compatibility link. A test SMB server and the
+workstation's actual CIFS options exercise wallpaper access as the normal user
+before and after reboot. The home filesystem uses the workstation's actual
+mount options so accidental `noexec` settings fail the executable-file check.
 
 ```sh
 nix build .#checks.x86_64-linux.persistence --no-link -L
@@ -139,11 +150,11 @@ journal before deleting accounts or keyrings; deleting them discards saved state
 Check the path the running application actually uses, then its backing mount:
 
 ```sh
-findmnt -T "$HOME/.config/VSCodium"
-findmnt -T "$HOME/.vscode-oss-shared"
+findmnt -T "$HOME/.config/VSCodium" -o TARGET,SOURCE,FSTYPE,OPTIONS
+findmnt -T "$HOME/.vscode-oss-shared" -o TARGET,SOURCE,FSTYPE,OPTIONS
 readlink -f "$HOME/.config/fish/fish_variables"
 systemctl list-units --type=mount
-journalctl --boot --unit=migrate-persistent-home.service
+journalctl --boot --unit=home-manager-ephemeral.service
 ```
 
 For these editor directories, the mount source should point into `/p-home`,

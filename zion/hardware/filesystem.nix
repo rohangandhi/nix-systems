@@ -1,39 +1,5 @@
 { config, lib, pkgs, my-options, ... }:
 let
-  # Run before activation on boot, while no user processes or home bind mounts
-  # exist. Keep the old path as a link so older generations use the same data.
-  migrateHome = pkgs.writeShellScript "migrate-persistent-home" ''
-    set -euo pipefail
-    export PATH=${lib.makeBinPath [ pkgs.coreutils ]}
-    persistent_root="$1"
-    old_home="$persistent_root/${my-options.user.name}"
-    new_home="$persistent_root/home/${my-options.user.name}"
-
-    if [[ -L "$persistent_root/home" ]]; then
-      echo "Refusing migration: $persistent_root/home is a symbolic link." >&2
-      exit 1
-    fi
-    if [[ -L "$old_home" ]]; then
-      if [[ "$(readlink "$old_home")" != "home/${my-options.user.name}" || ! -d "$new_home" || -L "$new_home" ]]; then
-        echo "Refusing migration: unexpected legacy home link at $old_home." >&2
-        exit 1
-      fi
-    elif [[ -e "$old_home" ]]; then
-      if [[ ! -d "$old_home" || -e "$new_home" || -L "$new_home" ]]; then
-        echo "Refusing to merge or overwrite persistent homes: $old_home and $new_home." >&2
-        exit 1
-      fi
-      install -d -m 0755 "$persistent_root/home"
-      mv -T -- "$old_home" "$new_home"
-      ln -s -- "home/${my-options.user.name}" "$old_home"
-    elif [[ -d "$new_home" && ! -L "$new_home" ]]; then
-      # Also recover an interrupted migration between the rename and symlink.
-      ln -s -- "home/${my-options.user.name}" "$old_home"
-    elif [[ -e "$new_home" || -L "$new_home" ]]; then
-      echo "Refusing migration: $new_home is not a regular directory." >&2
-      exit 1
-    fi
-  '';
   installRoot = config.disko.rootMountPoint;
 in {
 
@@ -113,7 +79,9 @@ in {
           type = "filesystem";
           format = "ext4";
           mountpoint = "/p-home";
-          mountOptions = [ "suid" "dev" "exec" "user" ];
+          # System-managed mounts need exec for application and extension tools.
+          # The user option would implicitly restore noexec, even after exec.
+          mountOptions = [ "nosuid" "nodev" "exec" ];
         };
       };
     };
@@ -198,30 +166,12 @@ in {
     "L /persist/data - - - - /p-data"
   ];
 
-  boot.initrd.systemd.storePaths = [
-    migrateHome
-    "${pkgs.util-linux}/bin/mountpoint"
-  ];
-  boot.initrd.systemd.services.migrate-persistent-home = {
-    description = "Migrate the legacy persistent home layout";
-    requiredBy = [ "initrd-nixos-activation.service" ];
-    before = [ "initrd-nixos-activation.service" ];
-    unitConfig = {
-      DefaultDependencies = false;
-      RequiresMountsFor = [ "/sysroot/p-home" ];
-    };
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStartPre = "${pkgs.util-linux}/bin/mountpoint -q /sysroot/p-home";
-      ExecStart = "${migrateHome} /sysroot/p-home";
-    };
-  };
-
-  # A live switch cannot replace the old per-user bindfs mounts safely. Boot
-  # the new generation instead; its initrd migrates before persistence starts.
+  # Do not silently create an empty profile when restoring an old-layout backup.
+  # The completed migration's compatibility symlink is deliberately left alone.
   system.activationScripts.createPersistentStorageDirs.text = lib.mkBefore ''
     if [ -d /p-home/${my-options.user.name} ] && [ ! -L /p-home/${my-options.user.name} ]; then
-      echo "Home persistence needs migration. Use nixos-rebuild boot and reboot, not switch." >&2
+      echo "Legacy persistent home at /p-home/${my-options.user.name}; expected /p-home/home/${my-options.user.name}." >&2
+      echo "See zion/hardware/README-impermanence.md#legacy-layout-and-rollback before activating." >&2
       exit 1
     fi
   '';

@@ -32,7 +32,7 @@ guide below explains ownership and optional project-specific configuration.
 
 ## Guides
 
-- [Storage and persistence](zion/hardware/README-impermanence.md): current disk layout, migration ordering, and diagnosing lost application state.
+- [Storage and persistence](zion/hardware/README-impermanence.md): current disk layout, mount behavior, recovery, and diagnosing lost application state.
 - [Development applications](common/apps/development/README.md): VSCodium and Codex, settings ownership, persistence, and dock integration.
 - [Terminal usage](common/apps/terminal/README.md): Fish shortcuts, optional tmux, the prompt, and fonts.
 - [Shared themes](common/theme/README.md): select, disable, or add a palette and understand its application coverage.
@@ -43,9 +43,6 @@ the relevant code, and architectural principles in [TENETS.md](TENETS.md).
 ## Build and switch this workstation
 
 Keep the public `systems` and private `systems-private` checkouts side by side.
-For the first upgrade from the old `/p-home/ephemeral` layout, follow the
-[boot migration procedure](zion/hardware/README-impermanence.md#upgrading-from-the-legacy-layout)
-before using the routine switch command below.
 From the private checkout, validate, build, and activate the complete host:
 
 ```sh
@@ -65,6 +62,11 @@ removals and dock changes take effect when switching; reopen affected
 applications to load their new settings. The public host's locked password
 placeholder requires the private credential extension for complete host
 validation.
+
+For persistent-filesystem mount-option changes, use `nixos-rebuild boot` with
+the same flake and input override, then reboot so every home bind mount receives
+the new flags. Restoring data from before the completed persistence migration
+requires the [legacy-layout recovery notes](zion/hardware/README-impermanence.md#legacy-layout-and-rollback).
 
 To return to the previous system generation:
 
