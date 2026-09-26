@@ -1,0 +1,15 @@
+/* Native Shell colors/surfaces; match terminal typography for numeric values. */
+.system-resources-panel { spacing: 0.8em; }
+.system-resources-value { font-family: "NotoSansM Nerd Font Mono"; font-weight: normal; font-feature-settings: "tnum"; }
+.system-resources-percent { width: 2.7em; text-align: right; }
+.system-resources-memory { width: 3.8em; text-align: right; }
+.system-resources-scroll { width: 26em; }
+.system-resources-row { spacing: 1em; padding-top: 0.35em; padding-bottom: 0.35em; }
+.system-resources-line { spacing: 1em; }
+.system-resources-stack { spacing: 0.25em; }
+.system-resources-heading { font-weight: bold; }
+.system-resources-note { font-size: 0.85em; opacity: 0.7; }
+.system-resources-bar { height: 0.4em; -barlevel-height: 0.3em; }
+.system-resources-sort { padding: 0.25em 0.55em; }
+/* These rows report information; they are not disabled actions. */
+.system-resources-content .popup-inactive-menu-item:insensitive { color: inherit; }

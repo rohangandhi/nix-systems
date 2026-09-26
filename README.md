@@ -16,6 +16,7 @@ Feature files contain settings; `flake.nix` selects them explicitly.
 | Area | Configuration |
 | --- | --- |
 | Desktop | GNOME, with Firefox, Files, Alacritty, VSCodium, and Codex pinned to the dock. |
+| Resources | A native top bar menu for CPU, Radeon GPU, RAM, persistent and volatile storage, and application RAM/VRAM. |
 | Graphics | Radeon RX 7900 XT with the kernel's AMDGPU driver and Mesa; LM Studio's AppImage environment supports its bundled ROCm runtime. |
 | Browsers | Firefox and Chromium with privacy policies and encrypted DNS that allows system-resolver fallback. |
 | Terminal | Alacritty starts Fish with Starship; tmux is optional. Terminals use Noto Sans Mono Nerd Font, while GNOME keeps its upstream font defaults. |
@@ -35,6 +36,7 @@ guide below explains ownership and optional project-specific configuration.
 ## Guides
 
 - [Storage and persistence](zion/hardware/README-impermanence.md): current disk layout, mount behavior, recovery, and diagnosing lost application state.
+- [System Resources](common/desktop/gnome-extensions/system-resources/README.md): the local GNOME resource menu, memory accounting, and refresh behavior.
 - [Development applications](common/apps/development/README.md): VSCodium and Codex, settings ownership, persistence, and dock integration.
 - [Terminal usage](common/apps/terminal/README.md): Fish shortcuts, optional tmux, the prompt, and fonts.
 - [Shared themes](common/theme/README.md): select, disable, or add a palette and understand its application coverage.

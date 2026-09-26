@@ -151,5 +151,8 @@
 
     checks.x86_64-linux.persistence = import ./tests/persistence.nix { inherit inputs; };
     checks.x86_64-linux.keyring-autologin = import ./tests/keyring-autologin.nix { inherit inputs; };
+    checks.x86_64-linux.system-resources = import ./common/desktop/gnome-extensions/system-resources/package.nix {
+      pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+    };
   };
 }

@@ -3,6 +3,7 @@ let
   theme = config.my-theme;
   palette = theme.colors;
   colors = builtins.mapAttrs (_: hex: "#${hex}") palette;
+  systemResources = import ./gnome-extensions/system-resources/package.nix { inherit pkgs; };
 in {
 
   # GDM 50.3 fixes reuse of systemd's cached LUKS passphrase during autologin.
@@ -32,7 +33,7 @@ in {
   services.gnome.core-apps.enable = false;
   services.gnome.core-developer-tools.enable = false;
   services.gnome.games.enable = false;
-  environment.systemPackages = [ pkgs.gnome-console pkgs.nautilus pkgs.gnome-keyring ];
+  environment.systemPackages = [ pkgs.gnome-console pkgs.nautilus pkgs.gnome-keyring systemResources ];
   environment.gnome.excludePackages = [ pkgs.gnome-tour pkgs.gnome-user-docs ];
   
   programs.dconf.profiles.gdm.databases = [{
@@ -140,6 +141,10 @@ in {
       '';
     };
     dconf.enable = true;
+    dconf.settings."org/gnome/shell" = {
+      disable-user-extensions = false;
+      enabled-extensions = [ systemResources.extensionUuid ];
+    };
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
     # GNOME Shell accepts named accents, not arbitrary RGB palette colors.
     dconf.settings."org/gnome/desktop/interface".accent-color = lib.mkIf theme.enabled theme.gnomeAccent;
