@@ -1,14 +1,7 @@
-{ pkgs, ... }: {
+{ ... }: {
   services.xserver.videoDrivers = [ "amdgpu" ];
 
+  # Mesa includes the native Radeon VA-API driver; no VDPAU bridges are needed.
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
-  hardware.graphics.extraPackages = [
-    pkgs.libva-vdpau-driver
-    pkgs.libvdpau-va-gl
-  ];
-  hardware.graphics.extraPackages32 = [
-    pkgs.pkgsi686Linux.libva-vdpau-driver
-    pkgs.pkgsi686Linux.libvdpau-va-gl
-  ];
 }

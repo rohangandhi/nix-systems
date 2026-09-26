@@ -86,6 +86,8 @@ mutable application data.
 
 [graphics.nix](zion/hardware/graphics.nix) enables AMDGPU and Mesa, including
 32-bit graphics support. Desktop rendering and Vulkan inference use this stack.
+Hardware video acceleration uses Mesa's native Radeon VA-API driver, without
+the legacy VA-API/VDPAU translation packages.
 LM Studio is a manually installed AppImage; its downloaded ROCm runtime supplies
 the HIP and math libraries for AMD compute. A separate system-wide ROCm SDK or
 OpenCL driver is not needed for this application.
