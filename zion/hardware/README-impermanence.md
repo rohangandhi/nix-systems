@@ -74,6 +74,21 @@ directories are mounted before Home Manager writes settings or the editor starts
 Workspace trust lives in `~/.vscode-oss-shared/sharedStorage/state.vscdb` with the
 configured package. Persisting only `~/.config/VSCodium` misses it.
 
+GNOME Online Accounts needs both `~/.config/goa-1.0` (account definitions) and
+`~/.local/share/keyrings` (credentials). Both are persisted. When adding these
+mounts to an existing installation, close Settings and stop Online Accounts and
+GNOME Keyring before copying their current directories into `/p-home/<user>`.
+Back up both directories, preserve their permissions, and do not overwrite an
+existing persistent destination. Activate the mounts before restarting the
+services. Keep the keyring directory private (`0700`) and its files private
+(`0600`).
+
+Persistence does not unlock an encrypted login keyring. With GDM automatic login,
+unlock it when prompted; password login can unlock it through PAM when its
+password matches the login password. A blank Online Accounts panel can also mean
+the daemon is waiting on the keyring. Check its D-Bus response and the session
+journal before deleting accounts or keyrings; deleting them discards saved state.
+
 ## Diagnose state that does not survive
 
 Check the path the running application actually uses, then its backing mount:

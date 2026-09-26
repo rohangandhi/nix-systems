@@ -245,6 +245,10 @@
         ".mozilla"
         ".ssh"
 
+        # Online Accounts needs both account definitions and keyring credentials.
+        ".config/goa-1.0"
+        ".local/share/keyrings"
+
         ".codex"
         ".gemini"
 
