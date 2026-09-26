@@ -219,7 +219,7 @@
   # --one-file-system --base-directory /home/ephemeral \
   # --changed-after 1h \
   # --type f --hidden \
-  # --exclude "{.local/share,.mozilla,.cursor,.config/VSCodium,.lmstudio,.cache}"
+  # --exclude "{.local/share,.mozilla,.config/VSCodium,.lmstudio,.cache}"
 
   home-manager.users.${my-options.user.name} = { lib, my-options, ... }: {
     # Fish needs an existing target for its atomic universal-variable writes.
@@ -250,19 +250,9 @@
         ".local/share/keyrings"
 
         ".codex"
-        ".gemini"
-
-        ".antigravity"
-        ".config/Antigravity"
 
         ".lmstudio"
         ".config/LM Studio"
-
-        ".cursor"
-        ".config/Cursor"
-
-        ".vscode"
-        ".config/Code"
 
         # VSCodium: extensions/launcher, workspace trust, and writable profile.
         # Persist all three; settings alone do not include trust decisions.
