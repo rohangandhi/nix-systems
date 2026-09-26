@@ -1,4 +1,41 @@
-{ pkgs, my-options, ... }: {
+{ config, lib, pkgs, my-options, ... }:
+let
+  # Run before activation on boot, while no user processes or home bind mounts
+  # exist. Keep the old path as a link so older generations use the same data.
+  migrateHome = pkgs.writeShellScript "migrate-persistent-home" ''
+    set -euo pipefail
+    export PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+    persistent_root="$1"
+    old_home="$persistent_root/${my-options.user.name}"
+    new_home="$persistent_root/home/${my-options.user.name}"
+
+    if [[ -L "$persistent_root/home" ]]; then
+      echo "Refusing migration: $persistent_root/home is a symbolic link." >&2
+      exit 1
+    fi
+    if [[ -L "$old_home" ]]; then
+      if [[ "$(readlink "$old_home")" != "home/${my-options.user.name}" || ! -d "$new_home" || -L "$new_home" ]]; then
+        echo "Refusing migration: unexpected legacy home link at $old_home." >&2
+        exit 1
+      fi
+    elif [[ -e "$old_home" ]]; then
+      if [[ ! -d "$old_home" || -e "$new_home" || -L "$new_home" ]]; then
+        echo "Refusing to merge or overwrite persistent homes: $old_home and $new_home." >&2
+        exit 1
+      fi
+      install -d -m 0755 "$persistent_root/home"
+      mv -T -- "$old_home" "$new_home"
+      ln -s -- "home/${my-options.user.name}" "$old_home"
+    elif [[ -d "$new_home" && ! -L "$new_home" ]]; then
+      # Also recover an interrupted migration between the rename and symlink.
+      ln -s -- "home/${my-options.user.name}" "$old_home"
+    elif [[ -e "$new_home" || -L "$new_home" ]]; then
+      echo "Refusing migration: $new_home is not a regular directory." >&2
+      exit 1
+    fi
+  '';
+  installRoot = config.disko.rootMountPoint;
+in {
 
   disko.devices = {
     disk.main = {
@@ -31,18 +68,6 @@
             settings = {
               allowDiscards = true;
             };
-            postMountHook = ''
-              # Prepare for installation. Execute on installer/live OS:
-              sudo mkdir -p /mnt/nix
-              sudo mkdir -p /mnt/p-os/nix
-              sudo mount --bind /mnt/p-os/nix /mnt/nix
-
-              # Home directory does not get created since root is mounted on tempfs. So manually creating home.
-              sudo mkdir -p /mnt/p-home/ephemeral
-              sudo mkdir -p /mnt/home/ephemeral
-              sudo chown "${toString my-options.user.uid}:${toString my-options.group.gid}" /mnt/p-home/ephemeral
-              sudo mount --bind /mnt/p-home/ephemeral /mnt/home/ephemeral
-            '';
             content = {
               type = "lvm_pv";
               vg = "zion";
@@ -57,7 +82,7 @@
             format = "ext4";
             mountpoint = "/p-data";
             postMountHook = ''
-              sudo chown "${toString my-options.user.uid}:${toString my-options.group.gid}" /mnt/p-data
+              chown "${toString my-options.user.uid}:${toString my-options.group.gid}" ${lib.escapeShellArg "${installRoot}/p-data"}
             '';
           };
         };
@@ -73,10 +98,12 @@
           mountpoint = "/p-os";
           mountOptions = [ "defaults" ]; #Use the default options: rw, suid, dev, exec, auto, nouser, and async.
           postMountHook = ''
-            # Prepare for installation. Execute on installer/live OS:
-            sudo mkdir -p /mnt/nix
-            sudo mkdir -p /mnt/p-os/nix
-            sudo mount --bind /mnt/p-os/nix /mnt/nix
+            # The persistent filesystem is mounted now; put the target store
+            # on it before nixos-install writes anything into the tmpfs root.
+            mkdir -p ${lib.escapeShellArg "${installRoot}/nix"} ${lib.escapeShellArg "${installRoot}/p-os/nix"}
+            if ! findmnt --mountpoint ${lib.escapeShellArg "${installRoot}/nix"} >/dev/null; then
+              mount --bind ${lib.escapeShellArg "${installRoot}/p-os/nix"} ${lib.escapeShellArg "${installRoot}/nix"}
+            fi
           '';
         };
       };
@@ -87,14 +114,6 @@
           format = "ext4";
           mountpoint = "/p-home";
           mountOptions = [ "suid" "dev" "exec" "user" ];
-          postMountHook = ''
-            # Prepare for installation. Execute on installer/live OS:
-            # Home directory does not get created since root is mounted on tempfs. So manually creating home.
-            sudo mkdir -p /mnt/p-home/ephemeral
-            sudo mkdir -p /mnt/home/ephemeral
-            sudo chown "${toString my-options.user.uid}:${toString my-options.group.gid}" /mnt/p-home/ephemeral
-            sudo mount --bind /mnt/p-home/ephemeral /mnt/home/ephemeral
-          '';
         };
       };
     };
@@ -122,39 +141,6 @@
       neededForBoot = true;
     };
 
-    ############################################################
-    # TODO: Impermanence pinned to home-manager-v1 branch. Need to migrate to new API.
-    # environment.persistence bind mounts: impermanence omits fsType; nixpkgs requires it for boot.supportedFilesystems.
-    "/etc/NetworkManager/system-connections" = {
-      device = "/p-os/etc/NetworkManager/system-connections";
-      fsType = "none";
-      options = [ "bind" ];
-      depends = [ "/p-os" ];
-      neededForBoot = true;
-    };
-    "/var/log" = {
-      device = "/p-os/var/log";
-      fsType = "none";
-      options = [ "bind" ];
-      depends = [ "/p-os" ];
-      neededForBoot = true;
-    };
-    "/var/lib/nixos" = {
-      device = "/p-os/var/lib/nixos";
-      fsType = "none";
-      options = [ "bind" ];
-      depends = [ "/p-os" ];
-      neededForBoot = true;
-    };
-    "/var/lib/systemd/coredump" = {
-      device = "/p-os/var/lib/systemd/coredump";
-      fsType = "none";
-      options = [ "bind" ];
-      depends = [ "/p-os" ];
-      neededForBoot = true;
-    };
-    ############################################################
-
     # Home Setup
     "/p-home" = {
       neededForBoot = true;
@@ -168,6 +154,7 @@
         device = "none";
         fsType = "tmpfs";
         options = [ "size=8G" "mode=1755" "uid=${uid}" "gid=${gid}" ];
+        neededForBoot = true;
       };
 
     # Data Setup
@@ -203,6 +190,42 @@
     pkgs.nfs-utils
   ];
 
+  # A browsing hub only: these links do not add filesystems or duplicate data.
+  systemd.tmpfiles.rules = [
+    "d /persist 0755 root root -"
+    "L /persist/os - - - - /p-os"
+    "L /persist/home - - - - /p-home"
+    "L /persist/data - - - - /p-data"
+  ];
+
+  boot.initrd.systemd.storePaths = [
+    migrateHome
+    "${pkgs.util-linux}/bin/mountpoint"
+  ];
+  boot.initrd.systemd.services.migrate-persistent-home = {
+    description = "Migrate the legacy persistent home layout";
+    requiredBy = [ "initrd-nixos-activation.service" ];
+    before = [ "initrd-nixos-activation.service" ];
+    unitConfig = {
+      DefaultDependencies = false;
+      RequiresMountsFor = [ "/sysroot/p-home" ];
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStartPre = "${pkgs.util-linux}/bin/mountpoint -q /sysroot/p-home";
+      ExecStart = "${migrateHome} /sysroot/p-home";
+    };
+  };
+
+  # A live switch cannot replace the old per-user bindfs mounts safely. Boot
+  # the new generation instead; its initrd migrates before persistence starts.
+  system.activationScripts.createPersistentStorageDirs.text = lib.mkBefore ''
+    if [ -d /p-home/${my-options.user.name} ] && [ ! -L /p-home/${my-options.user.name} ]; then
+      echo "Home persistence needs migration. Use nixos-rebuild boot and reboot, not switch." >&2
+      exit 1
+    fi
+  '';
+
 
   environment.persistence."/p-os" = {
     hideMounts = true;
@@ -226,7 +249,7 @@
     # Preserve any current settings before Home Manager replaces the local file.
     home.activation.persistFishVariables = lib.hm.dag.entryBetween
       [ "linkGeneration" ] [ "writeBoundary" ] ''
-        fish_state_path="/p-home/${my-options.user.name}/.config/fish/fish_variables"
+        fish_state_path="/p-home/home/${my-options.user.name}/.config/fish/fish_variables"
         if [[ ! -e "$fish_state_path" ]]; then
           if [[ -f "$HOME/.config/fish/fish_variables" ]]; then
             run ${pkgs.coreutils}/bin/install -D -m 600 "$HOME/.config/fish/fish_variables" "$fish_state_path"
@@ -236,7 +259,7 @@
         fi
       '';
 
-    home.persistence."/p-home/${my-options.user.name}" = {
+    home.persistence."/p-home" = {
       directories = [
         # ".cache" # find a better way to allocate storage for this (frequently used by apps running into limites of storage on RAM disk)
         ".cache/uv"
@@ -260,8 +283,8 @@
         ".vscode-oss-shared"
         ".config/VSCodium"
       ];
-      files = [ ".config/fish/fish_variables" ];
-      allowOther = true;
+      # Fish atomically replaces this file; a bind-mounted file cannot be renamed.
+      files = [{ file = ".config/fish/fish_variables"; method = "symlink"; }];
     };
   };
 }

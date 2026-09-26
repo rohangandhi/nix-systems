@@ -12,6 +12,6 @@ if ! mountpoint -q /mnt; then
 fi
 
 # Storage preparation is a separate, explicit operation. This script never formats disks.
-# nixos-install prompts for a root password; the host configuration supplies its login user.
+# The selected host supplies its account credentials; immutable accounts skip the password prompt.
 sudo env NIX_CONFIG="experimental-features = nix-command flakes" \
   nixos-install --flake "$1" --no-channel-copy

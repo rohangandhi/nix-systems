@@ -22,7 +22,7 @@ Feature files contain settings; `flake.nix` selects them explicitly.
 | Codex | Desktop application and CLI, selected through [codex.nix](common/apps/development/codex.nix). |
 | Colors | Shared Midnight Jade palette, with Nord or native application colors available through `my-theme.palette`. |
 | Isolation | The `matrix-one` development VM and rootless Podman. Container storage lives under `/p-data/containers/storage`. |
-| Persistence | Root and home use tmpfs; selected system and application state is backed by persistent storage. |
+| Persistence | Root and home use tmpfs; selected state lives under `/p-os` and `/p-home/home/ephemeral`. Browse all persistent roots through `/persist`. |
 
 VSCodium's [application module](common/apps/development/codium.nix) and
 [palette module](common/theme/codium.nix) are selected separately. The editor
@@ -43,6 +43,9 @@ the relevant code, and architectural principles in [TENETS.md](TENETS.md).
 ## Build and switch this workstation
 
 Keep the public `systems` and private `systems-private` checkouts side by side.
+For the first upgrade from the old `/p-home/ephemeral` layout, follow the
+[boot migration procedure](zion/hardware/README-impermanence.md#upgrading-from-the-legacy-layout)
+before using the routine switch command below.
 From the private checkout, validate, build, and activate the complete host:
 
 ```sh
@@ -74,7 +77,7 @@ mutable application data.
 
 ## Installation
 
-`install.sh <flake-path#host>` installs into already-mounted `/mnt`; it never partitions or formats a disk. It prompts for the root password. Prepare storage separately and set your normal user's credentials in your host configuration first.
+`install.sh <flake-path#host>` installs into already-mounted `/mnt`; it never partitions or formats a disk. Prepare storage separately and set your normal user's credentials in your host configuration first. This host uses declarative accounts, with the login password supplied by the private extension; it does not declare a root password.
 
 ## Reuse modules
 
@@ -109,9 +112,10 @@ cd /home/ephemeral/n-data/nix/systems
 nix flake update
 ```
 
-The impermanence input is deliberately pinned to a specific revision in
-`flake.nix`. An ordinary lock-file update keeps that revision; changing it needs
-the [persistence migration review](zion/hardware/README-impermanence.md#why-impermanence-is-pinned).
+Impermanence uses its current API and is locked alongside the other inputs.
+Review storage-related updates using the
+[persistence guide](zion/hardware/README-impermanence.md), including generated
+mount paths and behavior across reboot.
 
 Then use the [build and switch workflow](#build-and-switch-this-workstation).
 Dependency updates change the lock file; they do not update the running system

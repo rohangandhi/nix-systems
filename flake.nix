@@ -1,7 +1,9 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    impermanence.url = "github:nix-community/impermanence/4b3e914cdf97a5b536a889e939fb2fd2b043a170";
+    impermanence.url = "github:nix-community/impermanence";
+    impermanence.inputs.nixpkgs.follows = "nixpkgs";
+    impermanence.inputs.home-manager.follows = "home-manager";
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -39,7 +41,6 @@
         ./common/input-modules/impermanence.nix
         ./common/input-modules/disko.nix
         ./common/input-modules/home-manager.nix
-        ./common/input-modules/home-manager/impermanence.nix
 
         # Hardware and storage
         ./zion/os/boot.nix
@@ -103,7 +104,6 @@
         ./common/input-modules/impermanence.nix
         ./common/input-modules/disko.nix
         ./common/input-modules/home-manager.nix
-        ./common/input-modules/home-manager/impermanence.nix
       ];
     };
     nixosModules.workstation = {
@@ -118,7 +118,6 @@
         ./common/input-modules/impermanence.nix
         ./common/input-modules/disko.nix
         ./common/input-modules/home-manager.nix
-        ./common/input-modules/home-manager/impermanence.nix
         ./zion/os/proxy.nix
         ./common/desktop/gnome.nix
         ./common/apps/browser/firefox.nix
@@ -145,5 +144,7 @@
     nixosModules.proxy = ./zion/os/proxy.nix;
     nixosModules.matrix-one = ./matrix/one/configuration.nix;
     nixosModules.matrix-commands = ./matrix/one/commands.nix;
+
+    checks.x86_64-linux.persistence = import ./tests/persistence.nix { inherit inputs; };
   };
 }

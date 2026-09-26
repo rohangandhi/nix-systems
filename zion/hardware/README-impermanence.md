@@ -16,37 +16,82 @@ name from `my-options.user.name`.
 | `/` | Temporary root filesystem. Selected system paths below it are persistent mounts. |
 | `/home/ephemeral` | Temporary home. Only declared mounts and persisted files survive reboot. |
 | `/p-os` | Persistent system storage. `/nix` is bound from `/p-os/nix`; selected system state includes NetworkManager connections, logs, and NixOS state. |
-| `/p-home/ephemeral` | Persistent backing directory for selected home paths. |
+| `/p-home/home/ephemeral` | Persistent backing directory for selected home paths. |
+| `/persist/os`, `/persist/home`, `/persist/data` | Browsing shortcuts to `/p-os`, `/p-home`, and `/p-data`; no extra storage or mounts. |
 | `/home/ephemeral/p-data` | Bind mount of the local persistent `/p-data` filesystem, including VM disks. |
 | `/home/ephemeral/n-data` | Automounted network share containing these checkouts; availability depends on the server and network. |
 
 The complete home directory is **not** persisted. The selected paths are in
-`home.persistence."/p-home/${my-options.user.name}"` in `filesystem.nix`.
-Directories use `bindfs` by default; individual persisted files use symlinks.
+`home.persistence."/p-home"` in `filesystem.nix`. Impermanence appends the
+working home path `/home/ephemeral` beneath that persistence root.
+Directories use system-managed bind mounts. Fish's state file explicitly uses
+a symlink so its atomic file replacements work.
 For example, `~/.config/VSCodium` is backed by
-`/p-home/ephemeral/.config/VSCodium`.
+`/p-home/home/ephemeral/.config/VSCodium`.
+
+Open `/persist` in Files to browse all three persistent roots. For example,
+`/persist/home/home/ephemeral/.mozilla` and
+`/p-home/home/ephemeral/.mozilla` are the same files. The extra `home` is the
+working path mirrored beneath the storage root. These shortcuts do not change
+permissions; accessing root-owned system files still requires appropriate access.
+
+`n-data` remains a CIFS automount at `/home/ephemeral/n-data`, backed by
+`//192.168.0.108/zion`. Systemd orders the automount after the home filesystem and
+the actual CIFS mount after `network-online.target`. Reading a file triggers the
+mount. Both GNOME wallpaper settings keep their existing `file:///home/ephemeral/n-data/wallpapers/...`
+paths; they do not move into `/p-home`. Access still requires the network server
+to be available.
 
 Persistence entries also cover manually installed applications. Removing an app
 module does not establish that its saved data is disposable. Keep the data and
 its persistence entry until its retirement is an explicit decision.
 
-## Why impermanence is pinned
+## Upgrading from the legacy layout
 
-[flake.nix](../../flake.nix) pins impermanence to
-`4b3e914cdf97a5b536a889e939fb2fd2b043a170`, using the `home-manager-v1` interface.
-This is a storage compatibility decision. The current interface takes
-`/p-home/ephemeral` as the persistent prefix directly, and
-[the Home Manager integration](../../common/input-modules/home-manager/impermanence.nix)
-imports its persistence module explicitly.
+The old `home-manager-v1` configuration stored data directly under
+`/p-home/ephemeral` and mounted it through per-user `bindfs` services. The current
+Impermanence module integrates with Home Manager automatically and uses system
+bind mounts. Its revision is recorded normally in [flake.lock](../../flake.lock).
 
-Changing the input to a different interface can change both the expected module
-imports and the generated storage paths. Treat that as a migration: compare the
-resolved source and destination paths, prepare and back up the data, then verify
-activation and reboot behavior. Updating the pin alone is not a data migration.
+For the first upgrade, **prepare a boot generation instead of switching the
+running desktop**. Keep a backup of important persistent data. From the private
+checkout, with both repositories side by side:
 
-The explicit `fsType = "none"` declarations for the system bind mounts in
-`filesystem.nix` accommodate the pinned module's filesystem declarations. Review
-them together with the module imports when changing the pin.
+```sh
+nix flake check --no-build --override-input public ../systems --no-write-lock-file
+sudo nixos-rebuild boot --flake .#zion-alpha --override-input public ../systems --no-write-lock-file
+sudo reboot
+```
+
+Before NixOS activation on the next boot, `migrate-persistent-home.service` waits
+for `/p-home` to be mounted, renames `ephemeral` to `home/ephemeral` within that
+filesystem, and leaves `/p-home/ephemeral -> home/ephemeral` for older generations.
+There is one copy of the data. The rename preserves ownership, permissions, and
+contents, including saved directories no longer listed for persistence.
+
+The migration refuses to merge two existing home directories or follow an
+unexpected link. If it stops, inspect the reported paths from a recovery
+environment rather than deleting either directory. A completed migration is safe
+to repeat, and the compatibility link also lets an older boot generation reach
+the same current data. It does not restore an older version of that data.
+
+An activation guard rejects a live switch while the legacy directory is still
+in place. Fresh installations have no legacy data to move. Subsequent updates
+can use the normal `nixos-rebuild switch` workflow.
+
+Disko only prepares the actual filesystems and the install target's `/nix` bind
+mount. It no longer binds the entire saved home onto the installation home, nor
+runs bind mounts from the LUKS hook before filesystems are mounted. NixOS and
+Impermanence create the home directories during activation.
+
+The disposable VM check covers migration, compatibility paths, permissions,
+the browsing shortcuts, and persistence across a reboot. It also uses a test SMB
+server and the workstation's actual CIFS options to read the wallpaper path as
+the normal user before and after reboot.
+
+```sh
+nix build .#checks.x86_64-linux.persistence --no-link -L
+```
 
 ## Adding or moving persistent state
 
@@ -55,7 +100,7 @@ them together with the module imports when changing the pin.
 2. Close the application before changing its storage location. Preserve its
    existing data and identify the exact destination under `/p-home` or `/p-os`.
 3. Populate the persistent destination **before mounting it over the current
-   path**. The pinned home module creates and mounts directories; it does not
+   path**. Impermanence creates and mounts directories; it does not
    automatically migrate the files that the new mount hides.
 4. Add the persistence declaration and any necessary migration alongside it.
    Make migrations safe to rerun and preserve an existing destination. Use an
@@ -77,7 +122,7 @@ configured package. Persisting only `~/.config/VSCodium` misses it.
 GNOME Online Accounts needs both `~/.config/goa-1.0` (account definitions) and
 `~/.local/share/keyrings` (credentials). Both are persisted. When adding these
 mounts to an existing installation, close Settings and stop Online Accounts and
-GNOME Keyring before copying their current directories into `/p-home/<user>`.
+GNOME Keyring before copying their current directories into `/p-home/home/<user>`.
 Back up both directories, preserve their permissions, and do not overwrite an
 existing persistent destination. Activate the mounts before restarting the
 services. Keep the keyring directory private (`0700`) and its files private
@@ -97,13 +142,13 @@ Check the path the running application actually uses, then its backing mount:
 findmnt -T "$HOME/.config/VSCodium"
 findmnt -T "$HOME/.vscode-oss-shared"
 readlink -f "$HOME/.config/fish/fish_variables"
-systemctl --user list-units 'bindMount-*'
-journalctl --user --boot --unit='bindMount-*'
+systemctl list-units --type=mount
+journalctl --boot --unit=migrate-persistent-home.service
 ```
 
 For these editor directories, the mount source should point into `/p-home`,
 rather than the temporary home filesystem. For `fish_variables`, the resolved
-file should be under `/p-home/ephemeral/.config/fish/`. A mount can work correctly
+file should be under `/p-home/home/ephemeral/.config/fish/`. A mount can work correctly
 while another application state directory is missing from persistence.
 
 [The editor guide](../../common/apps/development/README.md) covers writable

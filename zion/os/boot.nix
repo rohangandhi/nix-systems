@@ -12,7 +12,7 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.device = "nodev";
 
-  # boot.initrd.systemd.enable = true;
+  boot.initrd.systemd.enable = true;
   # boot.plymouth.enable = true;
   boot.kernelParams = ["quiet"]; # Pretty sure this one's optional.
 
