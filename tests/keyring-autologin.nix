@@ -14,6 +14,7 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       isNormalUser = true;
       uid = 1000;
       linger = true;
+      password = "fixture-password";
     };
     services.dbus.enable = true;
     services.gnome.gnome-keyring.enable = true;
@@ -21,6 +22,8 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
 
     # Exercise the workstation's generated PAM stack without a graphical session.
     security.pam.services.gdm-autologin.text = host.security.pam.services.gdm-autologin.text;
+    security.pam.services.gdm-password.text = host.security.pam.services.gdm-password.text;
+    security.pam.services.login.text = host.security.pam.services.login.text;
     systemd.services.keyring-login = {
       serviceConfig = {
         Type = "oneshot";
@@ -86,5 +89,16 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
         machine.succeed("printf 'wrong-password\\0fixture-password' | keyctl padd user cryptsetup @u")
         login()
         assert not locked()
+
+    with subtest("Manual login unlocks the keyring with the matching Unix password"):
+        lock()
+        # Manual login must work after the boot-time disk-password cache expires.
+        machine.succeed("keyctl clear @u")
+        machine.succeed(
+            "printf fixture-password | env XDG_RUNTIME_DIR=/run/user/1000 "
+            "pamtester gdm-password alice authenticate open_session"
+        )
+        assert not locked()
+        assert user("secret-tool lookup purpose autologin-test").strip() == "fixture-secret"
   '';
 }

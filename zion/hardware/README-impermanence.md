@@ -148,13 +148,21 @@ NixOS already gives GDM access to this cache with `KeyringMode=shared`.
 
 The GDM package override in `common/desktop/gnome.nix` updates 50.2 to 50.3, whose
 [release notes](https://download.gnome.org/sources/gdm/50/gdm-50.3.news) describe
-the fix for systemd's cache format. It leaves PAM configuration at NixOS defaults
-and defers to Nixpkgs when that provides 50.3 or newer; remove the override then.
+the fix for systemd's cache format. It defers to Nixpkgs when that provides 50.3
+or newer; remove the override then.
 If the cache has expired or the passwords differ, automatic login still works
 and the keyring asks for its password. Logging out and back in later may also
-require unlocking it. Password login can unlock it when its password matches the
-login password. Changing the declarative login password does not change the
-keyring password.
+require unlocking it once with the disk password.
+
+Use the same password for disk unlock, Unix login, and the login keyring so both
+boot autologin and later manual login can unlock it. GNOME Keyring remembers
+failed PAM unlock passwords and, after a later successful GUI unlock, can change
+the keyring password to the previously failed Unix password. Different disk and
+Unix passwords can therefore make the disk password unexpectedly stop working.
+PAM remains at its NixOS defaults. With `users.mutableUsers = false`, update the
+login-password hash in the private `zion/os/users.nix` and rebuild; changing it
+only with `passwd` or Settings will be undone by a later activation. Changing
+that hash does not itself change the keyring password.
 
 After rebuilding for boot and rebooting, `journalctl -b --grep=gkr-pam` should
 report that the login keyring was unlocked. A blank Online Accounts panel can
