@@ -16,6 +16,7 @@ Feature files contain settings; `flake.nix` selects them explicitly.
 | Area | Configuration |
 | --- | --- |
 | Desktop | GNOME, with Firefox, Files, Alacritty, VSCodium, and Codex pinned to the dock. |
+| Graphics | Radeon RX 7900 XT with the kernel's AMDGPU driver and Mesa; LM Studio's AppImage environment supports its bundled ROCm runtime. |
 | Browsers | Firefox and Chromium with privacy policies and encrypted DNS that allows system-resolver fallback. |
 | Terminal | Alacritty starts Fish with Starship; tmux is optional. Terminals use Noto Sans Mono Nerd Font, while GNOME keeps its upstream font defaults. |
 | Editor | VSCodium with writable settings, Nix IDE, Svelte, and `nil`/`nixfmt` for Nix editing. |
@@ -80,6 +81,33 @@ mutable application data.
 ## Installation
 
 `install.sh <flake-path#host>` installs into already-mounted `/mnt`; it never partitions or formats a disk. Prepare storage separately and set your normal user's credentials in your host configuration first. This host uses declarative accounts, with the login password supplied by the private extension; it does not declare a root password.
+
+## Graphics and LM Studio
+
+[graphics.nix](zion/hardware/graphics.nix) enables AMDGPU and Mesa, including
+32-bit graphics support. Desktop rendering and Vulkan inference use this stack.
+LM Studio is a manually installed AppImage; its downloaded ROCm runtime supplies
+the HIP and math libraries for AMD compute. A separate system-wide ROCm SDK or
+OpenCL driver is not needed for this application.
+
+[app-image.nix](common/apps/app-image.nix) adds `elfutils` and `zstd` to the
+AppImage compatibility environment. Without them, LM Studio's ROCm runtime can
+fail to load `libelf.so.1` or `libzstd.so.1`, even though Vulkan works. After
+changing this module, switch the system configuration and fully restart LM
+Studio so it uses the new environment.
+
+In LM Studio, open **Runtimes** with **Ctrl+Shift+R** and select the Linux
+AMD ROCm runtime for GGUF models. If a previous compatibility check failed,
+rerun it. Select the **RX 7900 XT** for inference; the Ryzen integrated GPU is
+a separate, much smaller GPU whose reported memory includes system RAM.
+Its memory is not additional VRAM on the Radeon card.
+
+For models and context sizes that fit in the card's 20 GB of VRAM, prefer full
+GPU layer offload and GPU KV-cache offload, leaving room for the desktop.
+Compare Vulkan and ROCm using the same model, context, and offload settings;
+runtime choice alone does not establish which is faster for a particular model.
+Runtime and GPU preferences stay writable in LM Studio. The host persists
+`~/.lmstudio` and `~/.config/LM Studio`.
 
 ## Reuse modules
 
