@@ -21,6 +21,7 @@ Feature files contain settings; `flake.nix` selects them explicitly.
 | Terminal | Alacritty starts Fish with Starship; tmux is optional. Terminals use Noto Sans Mono Nerd Font, while GNOME keeps its upstream font defaults. |
 | Editor | VSCodium with writable settings, Nix IDE, Svelte, and `nil`/`nixfmt` for Nix editing. |
 | Codex | Desktop application and CLI, selected through [codex.nix](common/apps/development/codex.nix). |
+| Games | Steam with Valve's Proton; the default game library lives under `/p-data/steam/steamapps`. |
 | Colors | Shared Midnight Jade palette, with Nord or native application colors available through `my-theme.palette`. |
 | Isolation | The `matrix-one` development VM and rootless Podman. Container storage lives under `/p-data/containers/storage`. |
 | Persistence | Root and home use tmpfs; selected state lives under `/p-os` and `/p-home/home/ephemeral`. Browse all persistent roots through `/persist`. |
@@ -110,6 +111,35 @@ Compare Vulkan and ROCm using the same model, context, and offload settings;
 runtime choice alone does not establish which is faster for a particular model.
 Runtime and GPU preferences stay writable in LM Studio. The host persists
 `~/.lmstudio` and `~/.config/LM Studio`.
+
+## Steam
+
+[steam.nix](common/apps/steam.nix) enables the standard NixOS Steam module,
+including its Linux runtime environment, 32-bit graphics/audio integration,
+controller rules, and desktop launcher. Launch Steam from GNOME after switching
+the configuration, let it update, and sign in. Steam manages Valve's Proton
+versions; use a game's **Properties > Compatibility** when it needs a specific
+version. GE-Proton and other gaming utilities can be added when a game needs them.
+Remote Play, dedicated-server, and LAN-transfer firewall openings remain disabled.
+
+The host's [filesystem module](zion/hardware/filesystem.nix) persists `~/.steam`
+and `~/.local/share/Steam` in encrypted `/p-home`. The default library's
+`steamapps` directory is linked to `/p-data/steam/steamapps`, so games, downloaded
+Proton runtimes, Windows compatibility prefixes, and shader caches use the data
+filesystem automatically. No extra library needs to be selected in Steam.
+`/p-data` is unencrypted; saves inside Proton prefixes live there too.
+
+For this machine's first installation, the Steam directories are empty. When
+applying this layout to an existing Steam installation, close Steam and move its
+existing `steamapps` directory to the data filesystem before activation; Home
+Manager deliberately refuses to overwrite an existing directory with the link.
+
+Native Linux games can save outside Steam's directories, for example in
+`~/.config`, `~/.local/share`, or `~/.config/unity3d`. Add each game's actual save
+directory to persistence as games are installed. Steam Cloud coverage varies by
+game; the temporary home alone does not preserve those files across a reboot.
+See [Valve's Proton guidance](https://partner.steamgames.com/doc/steamhardware/proton?l=english)
+for game-specific compatibility and anti-cheat limitations.
 
 ## Reuse modules
 

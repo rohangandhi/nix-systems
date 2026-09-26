@@ -87,12 +87,21 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       import json
 
       def check_home_mounts():
-          for path in ["/p-home", "/home/ephemeral/.vscode-oss"]:
+          for path in ["/p-home", "/home/ephemeral/.vscode-oss", "/home/ephemeral/.local/share/Steam"]:
               mount = json.loads(machine.succeed(f"findmnt --json --mountpoint {path} --output OPTIONS"))
               options = set(mount["filesystems"][0]["options"].split(","))
               assert "noexec" not in options, (path, options)
               assert {"nosuid", "nodev"} <= options, (path, options)
           machine.succeed("runuser -u ephemeral -- /home/ephemeral/.vscode-oss/test-bin/true")
+
+      def check_steam_library():
+          # The VM uses disposable /p-data; verify placement and user access
+          # on each boot, while the Steam profile below survives on /p-home.
+          machine.succeed("test $(readlink -f /home/ephemeral/.local/share/Steam/steamapps) = /p-data/steam/steamapps")
+          machine.succeed("test $(stat -c %u:%g /p-data/steam/steamapps) = 1000:999")
+          machine.succeed("test $(stat -c %a /p-data/steam/steamapps) = 700")
+          machine.succeed("runuser -u ephemeral -- install -Dm755 /run/current-system/sw/bin/true /home/ephemeral/.local/share/Steam/steamapps/test-bin/true")
+          machine.succeed("runuser -u ephemeral -- /p-data/steam/steamapps/test-bin/true")
 
       server.start()
       server.wait_for_unit("samba.target")
@@ -116,9 +125,11 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       # Preserve the basename: coreutils may dispatch its applets by argv[0].
       machine.succeed("runuser -u ephemeral -- install -Dm755 /run/current-system/sw/bin/true /home/ephemeral/.vscode-oss/test-bin/true")
       machine.succeed("runuser -u ephemeral -- fish -c 'set -U persistence_probe retained-fish'")
+      machine.succeed("runuser -u ephemeral -- sh -c 'echo retained-steam-profile > /home/ephemeral/.local/share/Steam/profile-probe'")
       machine.succeed("grep -qx changed-profile /persist/home/home/ephemeral/.mozilla/probe")
       machine.succeed("test $(stat -c %a /p-home/home/ephemeral/.mozilla/probe) = 600")
       check_home_mounts()
+      check_steam_library()
 
       # Reject an unmigrated directory, preserving both it and the current home.
       machine.succeed("mkdir /p-home/ephemeral; echo legacy-profile > /p-home/ephemeral/probe")
@@ -136,6 +147,7 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       machine.wait_for_unit("multi-user.target")
       machine.wait_for_unit("home-manager-ephemeral.service")
       machine.succeed("grep -qx changed-profile /home/ephemeral/.mozilla/probe")
+      machine.succeed("grep -qx retained-steam-profile /home/ephemeral/.local/share/Steam/profile-probe")
       machine.succeed("runuser -u ephemeral -- fish -c 'test $persistence_probe = retained-fish'")
       machine.succeed("test $(readlink /home/ephemeral/.config/fish/fish_variables) = /p-home/home/ephemeral/.config/fish/fish_variables")
       machine.succeed("test $(stat -c %a /p-home/home/ephemeral/.mozilla/probe) = 600")
@@ -144,6 +156,7 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       machine.fail("test -e /home/ephemeral/disposable")
       machine.succeed("test $(readlink /persist/home) = /p-home")
       check_home_mounts()
+      check_steam_library()
       machine.succeed("runuser -u ephemeral -- grep -qx fixture-wallpaper /home/ephemeral/n-data/${wallpaper}")
       machine.succeed("findmnt --mountpoint /home/ephemeral/n-data --types cifs")
     '';

@@ -164,6 +164,9 @@ in {
     "L /persist/os - - - - /p-os"
     "L /persist/home - - - - /p-home"
     "L /persist/data - - - - /p-data"
+    # The default Steam library is large; keep it off the home filesystem.
+    "d /p-data/steam 0700 ${my-options.user.name} ${my-options.group.name} -"
+    "d /p-data/steam/steamapps 0700 ${my-options.user.name} ${my-options.group.name} -"
   ];
 
   # Do not silently create an empty profile when restoring an old-layout backup.
@@ -194,7 +197,12 @@ in {
   # --type f --hidden \
   # --exclude "{.local/share,.mozilla,.config/VSCodium,.lmstudio,.cache}"
 
-  home-manager.users.${my-options.user.name} = { lib, my-options, ... }: {
+  home-manager.users.${my-options.user.name} = { config, lib, my-options, ... }: {
+    # The client and account state stay in encrypted /p-home. Steam follows
+    # this link for games, downloaded Proton runtimes, prefixes and shaders.
+    home.file.".local/share/Steam/steamapps".source =
+      config.lib.file.mkOutOfStoreSymlink "/p-data/steam/steamapps";
+
     # Fish needs an existing target for its atomic universal-variable writes.
     # Preserve any current settings before Home Manager replaces the local file.
     home.activation.persistFishVariables = lib.hm.dag.entryBetween
@@ -226,6 +234,9 @@ in {
 
         ".lmstudio"
         ".config/LM Studio"
+
+        ".steam"
+        ".local/share/Steam"
 
         # VSCodium: extensions/launcher, workspace trust, and writable profile.
         # Persist all three; settings alone do not include trust decisions.

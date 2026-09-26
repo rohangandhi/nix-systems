@@ -79,6 +79,9 @@
         ./common/theme/codium.nix
         ./common/apps/development/codex.nix
 
+        # Games
+        ./common/apps/steam.nix
+
         # VM launchers
         ./matrix/one/commands.nix
 
@@ -131,6 +134,7 @@
         ./common/apps/development/codium.nix
         ./common/theme/codium.nix
         ./common/apps/development/codex.nix
+        ./common/apps/steam.nix
         ./matrix/one/commands.nix
         ./common/apps/container.nix
         ./common/apps/git.nix
