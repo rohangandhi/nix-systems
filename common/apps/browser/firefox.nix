@@ -24,6 +24,18 @@
       DisableFirefoxStudies = true;
       DisableAccounts = true;
 
+      # Clear cache, cookies, and form data on exit; retain history and site settings.
+      # Use the dedicated policy; privacy.* preferences are not generally allowed.
+      SanitizeOnShutdown = {
+        Cache = true;
+        Cookies = true;
+        History = false;
+        FormData = true;
+        Sessions = false;
+        SiteSettings = false;
+        Locked = true;
+      };
+
       # Strict includes cookie partitioning, known/suspected fingerprinting,
       # email tracking, bounce tracking, and tracking-parameter protection.
       # Keep Firefox's strict-mode compatibility exceptions and per-site controls.
