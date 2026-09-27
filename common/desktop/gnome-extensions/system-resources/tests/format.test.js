@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {bytes, capacity, percent, cpuUsage} from '../format.js';
+import {bytes, percent, cpuUsage, level, thermalEdges, rangeText} from '../format.js';
 
 test('missing readings stay unknown instead of becoming zero', () => {
     for (const value of [undefined, null, NaN, Infinity]) {
@@ -20,10 +20,22 @@ test('CPU uses deltas and survives counter resets', () => {
     assert.equal(percent(150), '100%');
 });
 
-test('capacity columns keep the slash in one position despite different units', () => {
-    for (const [used, total] of [[0, 8 * 1024 ** 3], [1.5 * 1024 ** 3, 64 * 1024 ** 3],
-        [402 * 1024 ** 3, 491 * 1024 ** 3], [6 * 1024 ** 3, 1024 ** 4]]) {
-        assert.equal(capacity(used, total).indexOf('/'), 10);
-        assert.equal(capacity(used, total).length, 21);
-    }
+test('five bands preserve unknown readings and include their lower boundaries', () => {
+    assert.equal(level(null), null);
+    assert.equal(level(-1), null);
+    assert.equal(level(0), 0);
+    assert.equal(level(19.9), 0);
+    assert.equal(level(20), 1);
+    assert.equal(level(100), 4);
+    assert.equal(level(200), 4);
+});
+
+test('normal load temperatures have headroom; edge and CPU limits remain distinct', () => {
+    assert.equal(level(79, thermalEdges(95)), 2);
+    assert.equal(level(89, thermalEdges(95)), 3);
+    assert.equal(level(90, thermalEdges(95)), 4);
+    assert.equal(level(90, thermalEdges(100)), 3);
+    assert.equal(level(95, thermalEdges(100)), 4);
+    assert.equal(rangeText(61, thermalEdges(100), '°C'), '60–80 °C');
+    assert.equal(rangeText(null, thermalEdges(100), '°C'), 'Unavailable');
 });

@@ -1,6 +1,7 @@
 """Smoke-test a built package in a separate bus, compositor, and settings."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import signal
@@ -13,7 +14,13 @@ def main():
     parser.add_argument("package", type=Path)
     parser.add_argument("--scale", choices=[1, 2], type=int, default=2)
     parser.add_argument("--output", type=Path, default=Path("/tmp/system-resources-ui-test"))
+    parser.add_argument("--themes", type=Path,
+                        help="JSON cases with name, package, and shared palette colors")
+    parser.add_argument("--user-themes", type=Path, help="built GNOME User Themes extension")
     args = parser.parse_args()
+    if args.themes and not args.user_themes:
+        parser.error("--themes requires --user-themes")
+    themes = json.loads(args.themes.read_text()) if args.themes else []
     args.output.mkdir(parents=True, exist_ok=True)
     extension = args.package.resolve() / "share/gnome-shell/extensions/system-resources@local"
     if not (extension / "metadata.json").exists():
@@ -21,13 +28,22 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="system-resources-shell-") as temporary:
         root = Path(temporary)
-        for name in ["config/glib-2.0/settings", "data/gnome-shell/extensions", "cache", "state", "runtime"]:
+        for name in ["config/glib-2.0/settings", "data", "system-data/gnome-shell/extensions", "cache", "state", "runtime"]:
             (root / name).mkdir(parents=True, exist_ok=True)
         (root / "runtime").chmod(0o700)
-        (root / "data/gnome-shell/extensions/system-resources@local").symlink_to(extension)
+        (root / "system-data/gnome-shell/extensions/system-resources@local").symlink_to(extension)
+        if themes:
+            uuid = "user-theme@gnome-shell-extensions.gcampax.github.com"
+            (root / f"system-data/gnome-shell/extensions/{uuid}").symlink_to(
+                args.user_themes / f"share/gnome-shell/extensions/{uuid}")
+            (root / "data/themes").mkdir()
+            for theme in themes:
+                (root / "data/themes" / theme["name"]).symlink_to(
+                    Path(theme["package"]) / "share/themes" / theme["name"])
         (root / "config/glib-2.0/settings/keyfile").write_text(f"""[org/gnome/shell]
 enabled-extensions=['system-resources@local']
 disable-user-extensions=false
+allow-extension-installation=false
 welcome-dialog-last-shown-version='50.4'
 [org/gnome/desktop/interface]
 enable-animations=false
@@ -40,6 +56,11 @@ scaling-factor=uint32 {args.scale}
                    XDG_RUNTIME_DIR=str(root / "runtime"), GSETTINGS_BACKEND="keyfile",
                    LIBGL_ALWAYS_SOFTWARE="1", GDK_BACKEND="wayland",
                    SYSTEM_RESOURCES_TEST_OUTPUT=str(args.output.resolve()))
+        env["SYSTEM_RESOURCES_TEST_THEMES"] = json.dumps(themes)
+        # Test only pinned packages; don't download extension updates into the
+        # disposable profile. Explicit system data keeps them discoverable.
+        env["XDG_DATA_DIRS"] = str(root / "system-data") + ":" + env.get(
+            "XDG_DATA_DIRS", "/usr/local/share:/usr/share")
         env.pop("DISPLAY", None)
         env.pop("WAYLAND_DISPLAY", None)
         command = ["dbus-run-session", "--", "gnome-shell", "--headless", "--wayland", "--no-x11",
@@ -59,7 +80,7 @@ scaling-factor=uint32 {args.scale}
                 process.wait()
         output = log_path.read_text()
         expected = f"SYSTEM RESOURCES TEST PASSED (scale {args.scale})"
-        if process.returncode or expected not in output or "Did not find color property" in output:
+        if process.returncode or expected not in output or "Did not find color property" in output or "JS ERROR" in output:
             raise SystemExit(f"GNOME smoke test failed; inspect {log_path}")
         print(f"{expected}; screenshots and log: {args.output}")
 

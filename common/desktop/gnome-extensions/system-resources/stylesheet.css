@@ -1,15 +1,35 @@
-/* Native Shell colors/surfaces; match terminal typography for numeric values. */
+/* Surfaces, corners, states and colors come from Shell's native style classes.
+ * Only custom geometry/typography lives here. Drawings use the slider palette. */
 .system-resources-panel { spacing: 0.8em; }
 .system-resources-value { font-family: "NotoSansM Nerd Font Mono"; font-weight: normal; font-feature-settings: "tnum"; }
 .system-resources-percent { width: 2.7em; text-align: right; }
 .system-resources-memory { width: 3.8em; text-align: right; }
-.system-resources-scroll { width: 26em; }
-.system-resources-row { spacing: 1em; padding-top: 0.35em; padding-bottom: 0.35em; }
-.system-resources-line { spacing: 1em; }
-.system-resources-stack { spacing: 0.25em; }
-.system-resources-heading { font-weight: bold; }
-.system-resources-note { font-size: 0.85em; opacity: 0.7; }
-.system-resources-bar { height: 0.4em; -barlevel-height: 0.3em; }
-.system-resources-sort { padding: 0.25em 0.55em; }
-/* These rows report information; they are not disabled actions. */
-.system-resources-content .popup-inactive-menu-item:insensitive { color: inherit; }
+.sr-content { width: 542px; spacing: 16px; }
+.sr-section-title { font-size: 12px; font-weight: bold; padding: 2px 14px; }
+.sr-storage { padding: 18px 14px; margin: 0; }
+.sr-storage-content { spacing: 8px; }
+.sr-storage-name { font-size: 11px; }
+.sr-storage .sr-capacity-value { font-size: 10px; }
+.sr-storage .sr-bar { margin-top: 4px; }
+.sr-card { padding: 14px; margin: 0; }
+.sr-card-header { spacing: 6px; }
+.sr-heading { font-weight: bold; }
+.sr-hardware { font-size: 11px; }
+.sr-activity { height: 104px; spacing: 8px; margin-top: 16px; }
+.sr-sensors { width: 56px; spacing: 8px; }
+.sr-gauge { width: 48px; height: 48px; }
+.sr-metric-icon { icon-size: 20px; }
+.sr-drawing { min-width: 0; min-height: 0; }
+.sr-capacity { spacing: 8px; margin-top: 16px; padding-top: 12px; }
+.sr-capacity-line { spacing: 8px; }
+.sr-capacity-name { font-size: 13px; }
+.sr-capacity-value { font-size: 12px; }
+.sr-bar { height: 4px; -barlevel-height: 4px; }
+.sr-consumers { margin-top: 10px; }
+.sr-consumer { spacing: 8px; padding: 6px 0; font-size: 12px; }
+.sr-network { padding: 6px; margin: 0; }
+.sr-network-header { padding: 8px 8px 4px; }
+.sr-network-entry { padding: 8px; }
+.sr-network-content { spacing: 6px; }
+.sr-network-name { font-size: 12px; }
+.sr-network-value, .sr-network-detail { font-size: 11px; }

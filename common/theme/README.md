@@ -22,6 +22,7 @@ new configuration at different times:
 | Application | After switching |
 | --- | --- |
 | GTK applications | Reopen them to load the generated CSS and settings. |
+| GNOME top bar and widgets | Log out and back in after the first rebuild to discover User Themes. Later palette changes select the new theme on rebuild; log in again if the running Shell retains an older stylesheet. |
 | Alacritty, Fish, and Starship | Start a fresh terminal to apply shell colors and prompt settings together. |
 | tmux | Existing servers retain settings; start a new server after finishing work in the old sessions, especially when disabling the palette. |
 | VSCodium | Close and reopen the editor to load the theme and extension changes. |
@@ -31,7 +32,7 @@ rebuild too; see [editor settings and state](../apps/development/README.md).
 
 ## What turning it off does
 
-`null` removes GTK CSS, GNOME's custom accent, Alacritty colors, Fish color
+`null` removes GTK CSS, GNOME's custom accent and Shell theme, Alacritty colors, Fish color
 overrides, and tmux styling. VSCodium selects Dark Modern and removes the local
 palette theme; its writable settings retain unrelated UI preferences. Starship
 keeps its compact layout with built-in module styles.
@@ -71,13 +72,19 @@ with a brighter muted-text role for readability.
 Each application keeps its color mapping in its own feature module:
 
 - Alacritty, Fish, Starship, and tmux use the terminal colors.
-- GNOME's module uses the colors in GTK 3 CSS and libadwaita CSS variables.
+- GNOME's module uses the colors in GTK 3 CSS, libadwaita CSS variables, and a
+  Shell theme compiled from the pinned GNOME source. The top bar, resource
+  widgets, Quick Settings, calendar, and overview share the palette. Upstream
+  geometry and interaction states are retained; bars and gauges use its exact accent.
 - VSCodium installs a local theme for workbench, syntax, and integrated terminal colors.
 
 Fonts are configured separately; see [terminal fonts](../apps/terminal/README.md#fonts-and-colors).
 GNOME retains its upstream font defaults.
-The shell panel, overview, and login screen keep GNOME's built-in styling;
-the shell uses the palette's closest supported named accent. Browser content, Qt applications,
+The Shell theme uses GNOME's User Themes extension and is a dark theme, like the
+application adapters. Disable the palette for GNOME's native light/dark and
+high-contrast styles. The login screen retains GNOME's built-in styling.
+The desktop accent setting still uses the closest supported named accent for
+consumers outside the generated theme. Browser content, Qt applications,
 and apps with their own theme engines need separate integrations.
 
 Global user CSS can be overridden by an application's own styling, and sandboxed

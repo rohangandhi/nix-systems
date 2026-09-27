@@ -1,72 +1,25 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
-import {BarLevel} from 'resource:///org/gnome/shell/ui/barLevel.js';
 
-import {bytes, capacity, cpuUsage, percent} from './format.js';
-
-function label(text, params = {}) {
-    return new St.Label({text, y_align: Clutter.ActorAlign.CENTER, ...params});
-}
-
-function row(section, name, withBar = false) {
-    const item = new PopupMenu.PopupBaseMenuItem({
-        reactive: false, can_focus: true, style_class: 'system-resources-row',
-    });
-    const stack = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL,
-        x_expand: true, style_class: 'system-resources-stack'});
-    const line = new St.BoxLayout({style_class: 'system-resources-line'});
-    const title = label(name, {x_expand: true});
-    title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-    const value = label('—', {x_align: Clutter.ActorAlign.END, style_class: 'system-resources-value'});
-    line.add_child(title);
-    line.add_child(value);
-    stack.add_child(line);
-    const bar = withBar ? new BarLevel({style_class: 'slider system-resources-bar'}) : null;
-    if (bar)
-        stack.add_child(bar);
-    item.add_child(stack);
-    section.addMenuItem(item);
-    return {item, title, value, bar};
-}
-
-function setRow(target, text, fraction = null) {
-    target.value.text = text;
-    target.item.accessible_name = `${target.title.text}: ${text}`;
-    if (target.bar) {
-        target.bar.visible = Number.isFinite(fraction);
-        target.bar.value = Number.isFinite(fraction) ? Math.max(0, Math.min(1, fraction)) : 0;
-        target.bar.overdriveStart = fraction >= 0.9 ? 0.9 : 1;
-        target.bar.accessible_name = target.item.accessible_name;
-    }
-}
-
-function heading(section, text, first = false) {
-    if (!first)
-        section.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    const item = new PopupMenu.PopupMenuItem(text, {reactive: false, can_focus: false});
-    item.add_style_class_name('system-resources-heading');
-    section.addMenuItem(item);
-}
+import {bytes, cpuUsage, percent} from './format.js';
+import {box, Capacity, grid, label, Metric, sensor, Tooltips} from './widgets.js';
 
 export default class SystemResources extends Extension {
     enable() {
-        // Keep async callbacks tied to this enable cycle, even across re-enables.
+        // Every async callback belongs to this enable cycle, even after re-enable.
         const state = {active: true, busy: false, process: null, timeout: 0,
-            cancellable: null, previousCpu: null, storageAt: 0, timer: 0};
+            cancellable: null, previousCpu: null, previousThreads: new Map(), storageAt: 0, timer: 0,
+            networkAt: 0, network: {busy: false, process: null, timeout: 0, cancellable: null}};
         this._state = state;
-        this._consumerMode = 'ram';
-        this._applications = null;
         this._indicator = new PanelMenu.Button(0, 'System Resources');
-        const panel = new St.BoxLayout({style_class: 'system-resources-panel'});
+        const panel = box(false, 'system-resources-panel');
         this._values = {};
         for (const name of ['CPU', 'GPU', 'RAM']) {
             const value = label('—', {style_class: `system-resources-value ${name === 'RAM'
@@ -76,104 +29,212 @@ export default class SystemResources extends Extension {
         }
         this._indicator.add_child(panel);
         this._buildMenu();
-        // Register first: our focus handler must run after the panel's modal grab.
         Main.panel.addToStatusArea(this.uuid, this._indicator, 0, 'right');
         this._indicator.menu.connect('open-state-changed', (_menu, open) => {
+            this._tooltips.hide();
             if (open) {
-                // Constrain to the current monitor at its actual text/UI scale.
-                const monitor = Main.layoutManager.findMonitorForActor(this._indicator);
-                const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
-                this._scroll.set_style(`max-height: ${Math.max(160, Math.min(560,
-                    (monitor.height - Main.panel.height - 80) / scale))}px;`);
-                this._scroll.grab_key_focus();
+                this._disks.values().next().value.actor.grab_key_focus();
+                // Opening the menu establishes keyboard focus without placing
+                // a tooltip over it before the user points at a reading.
+                this._tooltips.hide();
                 void this._poll(state);
+                void this._pollNetwork(state);
+            } else {
+                state.previousThreads.clear();
             }
         });
         void this._poll(state);
         state.timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
             void this._poll(state);
+            void this._pollNetwork(state);
             return GLib.SOURCE_CONTINUE;
         });
     }
 
     _buildMenu() {
-        this._scroll = new St.ScrollView({style_class: 'system-resources-scroll vfade',
-            reactive: true, can_focus: true,
-            overlay_scrollbars: true, hscrollbar_policy: St.PolicyType.NEVER,
-            vscrollbar_policy: St.PolicyType.AUTOMATIC});
-        this._scroll.connect('key-press-event', (_actor, event) => {
-            const adjustment = this._scroll.vadjustment;
+        this._tooltips = new Tooltips();
+        this._indicator.menu.box.add_style_class_name('quick-settings');
+        this._content = box(true, 'sr-content');
+        this._indicator.menu.box.add_child(this._content);
+        this._content.connect('key-press-event', (_actor, event) => {
             const key = event.get_key_symbol();
-            const step = adjustment.step_increment || 32;
-            const offsets = new Map([[Clutter.KEY_Up, -step], [Clutter.KEY_Down, step],
-                [Clutter.KEY_Page_Up, -adjustment.page_size],
-                [Clutter.KEY_Page_Down, adjustment.page_size],
-                [Clutter.KEY_Home, -adjustment.upper], [Clutter.KEY_End, adjustment.upper]]);
-            if (!offsets.has(key))
+            const directions = new Map([[Clutter.KEY_Left, St.DirectionType.LEFT],
+                [Clutter.KEY_Right, St.DirectionType.RIGHT], [Clutter.KEY_Up, St.DirectionType.UP],
+                [Clutter.KEY_Down, St.DirectionType.DOWN], [Clutter.KEY_Tab, St.DirectionType.TAB_FORWARD],
+                [Clutter.KEY_ISO_Left_Tab, St.DirectionType.TAB_BACKWARD]]);
+            if (!directions.has(key))
                 return Clutter.EVENT_PROPAGATE;
-            adjustment.value = Math.max(adjustment.lower, Math.min(
-                adjustment.upper - adjustment.page_size, adjustment.value + offsets.get(key)));
-            return Clutter.EVENT_STOP;
+            return this._content.navigate_focus(global.stage.get_key_focus(), directions.get(key), true)
+                ? Clutter.EVENT_STOP : Clutter.EVENT_PROPAGATE;
         });
-        this._content = new PopupMenu.PopupMenuSection();
-        this._content.actor.add_style_class_name('system-resources-content');
-        // Add via the menu first so item signals and section lifetime are managed.
-        this._indicator.menu.addMenuItem(this._content);
-        this._indicator.menu.box.remove_child(this._content.actor);
-        this._scroll.set_child(this._content.actor);
-        this._indicator.menu.box.add_child(this._scroll);
 
-        heading(this._content, 'Persistent Storage', true);
+        // One six-column grid makes every tile equal, including across groups.
+        this._storage = grid(6);
+        this._storage.add(label('Volatile Storage', {style_class: 'sr-section-title'}), 0, 2);
+        this._storage.add(label('Persistent Storage', {style_class: 'sr-section-title'}), 2, 4);
         this._disks = new Map();
-        for (const path of ['/p-os', '/p-home', '/p-data', '/p-shared'])
-            this._disks.set(path, row(this._content, path.slice(1), true));
+        const paths = [['/', 'Root'], [GLib.get_home_dir(), 'Home'], ['/p-home', 'P-Home'],
+            ['/p-data', 'P-Data'], ['/p-shared', 'P-Shared'], ['/p-os', 'P-OS']];
+        paths.forEach(([path, name], index) => {
+            const tile = new Capacity(name, this._tooltips, {path, open: p => this._openDirectory(p)});
+            this._disks.set(path, tile);
+            this._storage.add(tile.actor, index + 6);
+        });
+        this._content.add_child(this._storage);
 
-        heading(this._content, 'Volatile Storage');
-        this._volatileSection = new PopupMenu.PopupMenuSection();
-        this._content.addMenuItem(this._volatileSection);
-        this._volatileRows = new Map();
-
-        heading(this._content, 'Memory');
-        this._ram = row(this._content, 'RAM', true);
-        this._vram = row(this._content, 'VRAM', true);
-
-        const selector = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
-        selector.add_child(label('Largest consumers', {x_expand: true}));
-        this._sortButtons = {};
-        for (const mode of ['ram', 'vram']) {
-            const button = new St.Button({label: mode.toUpperCase(), can_focus: true,
-                toggle_mode: true, checked: mode === 'ram',
-                accessible_name: `Show largest ${mode.toUpperCase()} consumers`,
-                style_class: 'button system-resources-sort'});
-            button.connect('clicked', () => {
-                this._consumerMode = mode;
-                this._renderConsumers();
-            });
-            this._sortButtons[mode] = button;
-            selector.add_child(button);
-        }
-        this._content.addMenuItem(selector);
-        this._apps = Array.from({length: 5}, () => row(this._content, '…'));
-        this._appNote = new PopupMenu.PopupMenuItem('Your apps and services · shared memory apportioned',
-            {reactive: false, can_focus: false});
-        this._appNote.add_style_class_name('system-resources-note');
-        this._appNote.label.clutter_text.line_wrap = true;
-        this._appNote.label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        this._content.addMenuItem(this._appNote);
+        this._resources = grid(2);
+        this._cpu = this._buildCard('CPU', '…', 'RAM');
+        this._gpu = this._buildCard('GPU', 'Radeon', 'VRAM');
+        this._resources.add(this._cpu.actor, 0);
+        this._resources.add(this._gpu.actor, 1);
+        this._content.add_child(this._resources);
+        this._buildNetwork();
+        this._cores = new Map();
+        this._coreSignature = '';
+        this._engines = [
+            ['busy', 'Graphics activity', 'graphics'],
+            ['memoryBusy', 'Memory activity', 'memory'],
+            ['videoBusy', 'Video activity', 'video'],
+        ].map(([key, name, icon], index) => {
+            const metric = new Metric(this._tooltips, {gicon: this._icon(icon)});
+            metric.key = key;
+            metric.name = name;
+            this._gpu.grid.add(metric.actor, index);
+            return metric;
+        });
+        this._clearReadings();
     }
 
-    async _poll(state) {
-        if (!state.active || state.busy)
-            return;
+    _buildCard(title, hardware, memory) {
+        const actor = box(true, 'quick-toggle-menu sr-card', {reactive: true, x_expand: true});
+        const header = box(false, 'sr-card-header');
+        header.add_child(label(title, {style_class: 'sr-heading', x_expand: true}));
+        const subtitle = label(hardware, {style_class: 'sr-muted sr-hardware'});
+        header.add_child(subtitle);
+        actor.add_child(header);
+        const activity = box(false, 'sr-activity');
+        const metrics = grid(3, 4, true);
+        activity.add_child(metrics);
+        const sensors = box(true, 'sr-sensors');
+        const temperature = new Metric(this._tooltips, {gicon: this._icon('temperature'), ring: true});
+        const power = new Metric(this._tooltips, {gicon: this._icon('power'), ring: true});
+        sensors.add_child(temperature.actor);
+        sensors.add_child(power.actor);
+        activity.add_child(sensors);
+        actor.add_child(activity);
+        const capacity = new Capacity(memory, this._tooltips);
+        actor.add_child(capacity.actor);
+        const consumers = box(true, 'sr-consumers');
+        const apps = Array.from({length: 3}, () => {
+            const row = box(false, 'sr-consumer');
+            const name = label('—', {style_class: 'sr-muted', x_expand: true});
+            const value = label('', {style_class: 'system-resources-value'});
+            row.add_child(name);
+            row.add_child(value);
+            consumers.add_child(row);
+            return {actor: row, name, value};
+        });
+        actor.add_child(consumers);
+        return {actor, subtitle, activity, grid: metrics, temperature, power, capacity, apps};
+    }
+
+    _icon(name) {
+        return new Gio.FileIcon({file: Gio.File.new_for_path(`${this.path}/icons/${name}-symbolic.svg`)});
+    }
+
+    _buildNetwork() {
+        const actor = box(true, 'quick-toggle-menu sr-network', {reactive: true, x_expand: true});
+        const header = box(false, 'sr-card-header sr-network-header');
+        header.add_child(label('Network', {style_class: 'sr-heading', x_expand: true}));
+        const subtitle = label('…', {style_class: 'sr-muted sr-hardware'});
+        header.add_child(subtitle);
+        actor.add_child(header);
+        const columns = grid(3, 8);
+        const entries = {};
+        for (const [index, name] of ['DNS', 'NAS', 'Router'].entries()) {
+            const content = box(true, 'sr-network-content', {x_expand: true});
+            content.add_child(label(name, {style_class: 'sr-network-name'}));
+            const value = label('—', {style_class: 'system-resources-value sr-network-value'});
+            const detail = label('Unavailable', {style_class: 'sr-muted sr-network-detail'});
+            content.add_child(value);
+            content.add_child(detail);
+            const entry = name === 'DNS' ? box(true, 'sr-network-entry') : new St.Button({
+                style_class: 'popup-menu-item sr-network-entry', x_expand: true, can_focus: true});
+            if (name === 'DNS')
+                entry.add_child(content);
+            else {
+                entry.set_child(content);
+                entry.connect('clicked', () => {
+                    if (entries[name].url)
+                        this._openUri(entries[name].url);
+                });
+            }
+            this._tooltips.bind(entry);
+            columns.add(entry, index);
+            entries[name] = {actor: entry, value, detail, url: null};
+        }
+        actor.add_child(columns);
+        this._content.add_child(actor);
+        this._network = {actor, subtitle, entries};
+        this._updateNetwork(null);
+    }
+
+    _updateNetwork(data) {
+        const {subtitle, entries} = this._network;
+        subtitle.text = data?.interface
+            ? [data.interface, data.address?.split('/')[0]].filter(Boolean).join(' · ')
+            : data ? 'No default route' : 'Unavailable';
+        const dns = data?.dns ?? [];
+        entries.DNS.value.text = dns[0] ?? '—';
+        entries.DNS.detail.text = dns.length > 1 ? dns[1] + (dns.length > 2 ? ` +${dns.length - 2}` : '')
+            : dns.length ? 'System resolver' : 'Unavailable';
+        entries.DNS.detail.add_style_class_name('system-resources-value');
+        const upstream = data?.upstreamDns?.filter(server => !dns.includes(server)) ?? [];
+        this._tooltips.set(entries.DNS.actor, dns.length
+            ? `System DNS servers\n${dns.join('\n')}` + (upstream.length
+                ? `\nConnection DNS servers\n${upstream.join('\n')}` : '')
+            : 'System DNS servers · Unavailable');
+        for (const [name, device] of [['NAS', data?.nas], ['Router', data?.router]]) {
+            const entry = entries[name];
+            entry.url = device?.url ?? (name === 'NAS' ? 'https://192.0.2.108' : 'https://192.0.2.1/');
+            entry.value.text = device?.address ?? '—';
+            const status = device?.reachable === true ? 'Reachable'
+                : device?.reachable === false ? 'No response' : 'Unavailable';
+            const mounts = device?.mounts ?? [];
+            entry.detail.text = name === 'NAS' && mounts.length ? `${status} · Mounted`
+                : name === 'Router' && data?.gateway === device?.address ? `${status} · Gateway` : status;
+            const connection = device?.reachable
+                ? `Web port reachable · ${device.connectMs.toFixed(1)} ms TCP connect`
+                : device ? 'Web port did not respond' : 'Connection information unavailable';
+            const more = name === 'NAS' ? (mounts.length
+                ? mounts.map(mount => `SMB ${mount.share} · ${mount.path}`).join('\n') : 'No mounted SMB share')
+                : `Default gateway: ${data?.gateway ?? 'Unavailable'}`;
+            this._tooltips.set(entry.actor, `${name === 'NAS' ? 'configured NAS' : 'configured router'}\n` +
+                `${connection}\n${more}\nOpen ${entry.url}`);
+        }
+    }
+
+    _openDirectory(path) {
+        this._openUri(Gio.File.new_for_path(path).get_uri());
+    }
+
+    _openUri(uri) {
+        const state = this._state;
+        this._tooltips.hide();
+        this._indicator.menu.close();
+        Gio.AppInfo.launch_default_for_uri_async(uri,
+            global.create_app_launch_context(0, -1), null, (_source, result) => {
+                try {
+                    Gio.AppInfo.launch_default_for_uri_finish(result);
+                } catch (error) {
+                    if (state.active)
+                        Main.notifyError('Could not open location', error.message);
+                }
+            });
+    }
+    async _readSnapshot(state, args) {
         state.busy = true;
-        const now = GLib.get_monotonic_time();
-        const storage = state.storageAt === 0 || now - state.storageAt >= 30_000_000;
-        const applications = this._indicator.menu.isOpen;
-        const argv = ['@python@', '-B', `${this.path}/collector.py`];
-        if (storage)
-            argv.push('--storage');
-        if (applications)
-            argv.push('--applications');
+        const argv = ['@python@', '-B', `${this.path}/collector.py`, ...args];
         try {
             const process = Gio.Subprocess.new(argv,
                 Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
@@ -196,9 +257,31 @@ export default class SystemResources extends Extension {
                     }
                 });
             });
+            return JSON.parse(output);
+        } finally {
+            if (state.timeout)
+                GLib.Source.remove(state.timeout);
+            state.timeout = 0;
+            state.process = null;
+            state.cancellable = null;
+            state.busy = false;
+        }
+    }
+
+    async _poll(state) {
+        if (!state.active || state.busy)
+            return;
+        const now = GLib.get_monotonic_time();
+        const storage = state.storageAt === 0 || now - state.storageAt >= 30_000_000;
+        const args = [];
+        if (storage)
+            args.push('--storage');
+        if (this._indicator.menu.isOpen)
+            args.push('--applications');
+        try {
+            const snapshot = await this._readSnapshot(state, args);
             if (!state.active)
                 return;
-            const snapshot = JSON.parse(output);
             this._update(snapshot, state);
             if (storage)
                 state.storageAt = now;
@@ -209,18 +292,26 @@ export default class SystemResources extends Extension {
                 for (const value of Object.values(this._values))
                     value.text = '—';
                 this._indicator.accessible_name = 'System Resources: readings unavailable';
-                this._applications = null;
-                for (const target of [...this._disks.values(), ...this._volatileRows.values(),
-                    this._ram, this._vram, ...this._apps])
-                    setRow(target, 'Unavailable');
+                this._clearReadings();
             }
-        } finally {
-            if (state.timeout)
-                GLib.Source.remove(state.timeout);
-            state.timeout = 0;
-            state.process = null;
-            state.cancellable = null;
-            state.busy = false;
+        }
+    }
+
+    async _pollNetwork(state) {
+        if (!state.active || state.network.busy || !this._indicator.menu.isOpen)
+            return;
+        const now = GLib.get_monotonic_time();
+        if (state.networkAt && now - state.networkAt < 15_000_000)
+            return;
+        // Device timeouts cannot delay the CPU/memory collection lane.
+        state.networkAt = now;
+        try {
+            const snapshot = await this._readSnapshot(state.network, ['--network']);
+            if (state.active)
+                this._updateNetwork(snapshot);
+        } catch (_error) {
+            if (state.active)
+                this._updateNetwork(null);
         }
     }
 
@@ -232,83 +323,112 @@ export default class SystemResources extends Extension {
         this._values.RAM.text = bytes(snapshot.memory?.used, true);
         this._indicator.accessible_name = `System Resources: CPU ${percent(cpu)}, ` +
             `GPU ${percent(snapshot.gpu?.busy)}, RAM ${bytes(snapshot.memory?.used)}`;
-
-        const memory = snapshot.memory;
-        setRow(this._ram, memory ? capacity(memory.used, memory.total) : 'Unavailable',
-            memory?.total > 0 ? memory.used / memory.total : null);
-        if (memory)
-            this._ram.item.accessible_name += `, ${bytes(memory.available)} available`;
-        const gpu = snapshot.gpu;
-        setRow(this._vram, Number.isFinite(gpu?.used)
-            ? capacity(gpu.used, gpu.total) : 'Unavailable',
-            Number.isFinite(gpu?.used) && gpu.total > 0 ? gpu.used / gpu.total : null);
-
+        this._cpu.capacity.update(snapshot.memory);
+        this._gpu.capacity.update(snapshot.gpu);
         if (snapshot.storage) {
-            for (const disk of snapshot.storage.persistent)
-                this._updateFilesystem(this._disks.get(disk.path), disk);
-            const paths = new Set(snapshot.storage.volatile.map(item => item.path));
-            for (const [path, target] of this._volatileRows) {
-                if (!paths.has(path)) {
-                    target.item.destroy();
-                    this._volatileRows.delete(path);
-                }
-            }
-            for (const disk of snapshot.storage.volatile) {
-                if (!this._volatileRows.has(disk.path))
-                    this._volatileRows.set(disk.path, row(this._volatileSection, disk.name, true));
-                this._updateFilesystem(this._volatileRows.get(disk.path), disk);
-            }
+            const disks = [...snapshot.storage.volatile, ...snapshot.storage.persistent];
+            for (const [path, tile] of this._disks)
+                tile.update(disks.find(disk => disk.path === path));
         }
-
+        if (snapshot.threads)
+            this._updateThreads(snapshot.threads, state);
+        if (snapshot.cpuSensors) {
+            const cpuSensors = snapshot.cpuSensors;
+            sensor(this._cpu.temperature, 'CPU temperature', cpuSensors.temperature,
+                {temperature: true, limit: cpuSensors.temperatureLimit});
+            sensor(this._cpu.power, 'CPU package power', cpuSensors.power,
+                {scale: cpuSensors.powerScale, detail: 'Includes integrated graphics and SoC'});
+        }
+        const gpu = snapshot.gpu;
+        if (gpu && Object.hasOwn(gpu, 'videoBusy')) {
+            this._gpu.subtitle.text = gpu.name;
+            for (const engine of this._engines)
+                engine.update(gpu[engine.key], `${engine.name} · ${percent(gpu[engine.key])}`);
+            sensor(this._gpu.temperature, 'GPU temperature (edge)', gpu.temperature,
+                {temperature: true, limit: gpu.temperatureLimit});
+            sensor(this._gpu.power, 'GPU power', gpu.power, {limit: gpu.powerLimit, scale: gpu.powerLimit});
+        } else if (!gpu) {
+            this._clearGpu();
+        }
         if (snapshot.applications && this._indicator.menu.isOpen) {
-            this._applications = snapshot.applications;
-            this._renderConsumers();
+            this._renderConsumers(this._cpu.apps, snapshot.applications.items, 'No readable RAM consumers');
+            this._renderConsumers(this._gpu.apps, snapshot.applications.vramItems,
+                snapshot.applications.vramStatus === 'ok' ? 'No active VRAM consumers' : 'VRAM consumers unavailable');
         }
     }
 
-    _renderConsumers() {
-        const vram = this._consumerMode === 'vram';
-        for (const [mode, button] of Object.entries(this._sortButtons))
-            button.checked = mode === this._consumerMode;
-        if (!this._applications) {
-            for (const target of this._apps)
-                target.item.hide();
-            this._appNote.label.text = 'Waiting for application readings';
-            return;
+    _updateThreads(threads, state) {
+        const signature = threads.map(t => `${t.package}:${t.core}:${t.id}`).join(',');
+        if (signature !== this._coreSignature) {
+            this._cpu.grid.destroy_all_children();
+            this._cores.clear();
+            this._coreSignature = signature;
+            const cores = new Map();
+            for (const thread of threads) {
+                const key = `${thread.package}:${thread.core}`;
+                if (!cores.has(key))
+                    cores.set(key, []);
+                cores.get(key).push(thread);
+            }
+            let index = 0;
+            for (const group of cores.values()) {
+                const pair = grid(group.length, 2, true);
+                group.forEach((thread, threadIndex) => {
+                    const metric = new Metric(this._tooltips, {core: true});
+                    metric.name = `Core ${index + 1} · Thread ${threadIndex + 1}`;
+                    pair.add(metric.actor, threadIndex);
+                    this._cores.set(thread.id, metric);
+                });
+                this._cpu.grid.add(pair, index++);
+            }
+            this._cpu.subtitle.text = `${cores.size} cores · ${threads.length} threads`;
         }
-        const apps = vram ? this._applications.vramItems : this._applications.items;
-        this._apps.forEach((target, index) => {
+        for (const thread of threads) {
+            const metric = this._cores.get(thread.id);
+            const value = cpuUsage(state.previousThreads.get(thread.id), thread);
+            metric.update(value, `${metric.name} · ${percent(value)}`);
+        }
+        state.previousThreads = new Map(threads.map(thread => [thread.id, thread]));
+    }
+
+    _renderConsumers(rows, apps, emptyText) {
+        rows.forEach((row, index) => {
             const app = apps[index];
-            target.item.visible = Boolean(app);
-            if (!app)
+            // Reserve three rows so both cards stay aligned as processes change.
+            row.actor.opacity = app || index === 0 ? 255 : 0;
+            if (!app) {
+                row.name.text = index === 0 ? emptyText : '—';
+                row.value.text = '';
                 return;
+            }
             const desktop = app.desktop && Shell.AppSystem.get_default().lookup_app(app.desktop);
             const localNames = {'org.gnome.Shell@user': 'GNOME Shell',
                 'org.chromium.Chromium': 'Chromium', 'codex-desktop': 'Codex'};
-            target.title.text = localNames[app.name] ?? desktop?.get_name() ?? app.name;
-            setRow(target, `${app.approximate ? '≈ ' : ''}${bytes(app.bytes)}`);
+            row.name.text = localNames[app.name] ?? desktop?.get_name() ?? app.name;
+            row.value.text = `${app.approximate ? '≈ ' : ''}${bytes(app.bytes)}`;
         });
-        this._appNote.label.text = vram
-            ? 'Reported VRAM · shared GPU buffers may overlap'
-            : apps.some(app => app.approximate)
-                ? 'Your apps and services · ≈ estimated shared memory'
-                : 'Your apps and services · shared memory apportioned';
-        if (!vram && this._applications.omitted)
-            this._appNote.label.text += '\nSome processes could not be read';
-        if (apps.length === 0)
-            this._appNote.label.text = vram
-                ? this._applications.vramStatus === 'ok'
-                    ? 'No active VRAM consumers' : 'VRAM consumers unavailable'
-                : 'No readable application memory';
     }
 
-    _updateFilesystem(target, disk) {
-        if (disk.status !== 'ok') {
-            setRow(target, disk.status === 'unmounted' ? 'Not mounted' : 'Unavailable');
-            return;
-        }
-        setRow(target, capacity(disk.used, disk.total), disk.fraction);
-        target.item.accessible_name += `, ${bytes(disk.available)} available`;
+    _clearGpu() {
+        for (const engine of this._engines)
+            engine.update(null, `${engine.name} · Unavailable`);
+        sensor(this._gpu.temperature, 'GPU temperature', null, {temperature: true});
+        sensor(this._gpu.power, 'GPU power', null);
+    }
+
+    _clearReadings() {
+        for (const tile of this._disks.values())
+            tile.update(null);
+        this._cpu.capacity.update(null);
+        this._gpu.capacity.update(null);
+        for (const metric of this._cores.values())
+            metric.update(null, `${metric.name} · Unavailable`);
+        this._state.previousThreads.clear();
+        sensor(this._cpu.temperature, 'CPU temperature', null, {temperature: true});
+        sensor(this._cpu.power, 'CPU package power', null);
+        this._clearGpu();
+        this._renderConsumers(this._cpu.apps, [], 'RAM consumers unavailable');
+        this._renderConsumers(this._gpu.apps, [], 'VRAM consumers unavailable');
     }
 
     disable() {
@@ -317,26 +437,20 @@ export default class SystemResources extends Extension {
             state.active = false;
             if (state.timer)
                 GLib.Source.remove(state.timer);
-            if (state.timeout)
-                GLib.Source.remove(state.timeout);
-            state.timeout = 0;
-            state.process?.force_exit();
-            state.cancellable?.cancel();
+            for (const request of [state, state.network]) {
+                if (request.timeout)
+                    GLib.Source.remove(request.timeout);
+                request.timeout = 0;
+                request.process?.force_exit();
+                request.cancellable?.cancel();
+            }
         }
-        // The section is wrapped in a scroll view, outside menu.removeAll().
-        this._content?.destroy();
+        // Destroy sources before their shared tooltip (source destroy hides it).
         this._indicator?.destroy();
-        this._indicator = null;
-        this._state = null;
-        this._content = null;
-        this._scroll = null;
-        this._values = null;
-        this._disks = null;
-        this._volatileRows = null;
-        this._volatileSection = null;
-        this._apps = null;
-        this._appNote = null;
-        this._sortButtons = this._applications = null;
-        this._ram = this._vram = null;
+        this._tooltips?.destroy();
+        this._indicator = this._tooltips = this._content = this._state = null;
+        this._disks = this._cores = this._engines = this._values = null;
+        this._cpu = this._gpu = this._resources = this._storage = null;
+        this._network = null;
     }
 }

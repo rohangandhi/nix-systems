@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
+import struct
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +14,45 @@ def mount(path, device="0:1", fs="tmpfs", root="/"):
 
 
 class CollectorTests(unittest.TestCase):
+    def test_network_route_prefers_low_metric_and_ignores_unusable_routes(self):
+        self.assertEqual(collector.default_route('invalid'), {})
+        self.assertEqual(collector.default_route('[]'), {})
+        result = collector.default_route('[{"dst":"default","dev":"eno1","metric":100},'
+            '{"dst":"default","dev":"wlan0","metric":600},'
+            '{"dst":"default","dev":"bad","type":"blackhole"},'
+            '{"dst":"192.0.2.0/24","dev":"other"}]')
+        self.assertEqual(result["dev"], "eno1")
+
+    def test_network_dns_and_ipv6_parsing(self):
+        self.assertEqual(collector.dns_servers('# nameserver 9.9.9.9\nnameserver 1.1.1.1 # test\n'
+            'nameserver ::1\nnameserver invalid\nnameserver 1.1.1.1\n'), ['1.1.1.1', '::1'])
+        result = collector.network_devices('GENERAL.DEVICE:eno1\nGENERAL.STATE:100 (connected)\n'
+            'IP4.DNS[1]:1.1.1.1\nIP4.DNS[2]:8.8.8.8\nIP6.ADDRESS[1]:fe80::1234/64\n'
+            '\nGENERAL.DEVICE:lo\nIP4.ADDRESS[1]:127.0.0.1/8\n')
+        self.assertEqual(result['eno1']['IP4.DNS'], ['1.1.1.1', '8.8.8.8'])
+        self.assertEqual(result['eno1']['IP6.ADDRESS'], ['fe80::1234/64'])
+        self.assertNotIn('IP4.DNS', result['lo'])
+
+    def test_nas_mount_status_does_not_trigger_automount_or_count_bind_alias(self):
+        text = ('1 0 0:1 / /home/alice/n-data rw - cifs //192.0.2.10/fixture-share rw\n'
+                '2 0 0:1 /nix /workspace rw - cifs //192.0.2.10/fixture-share rw\n'
+                '3 0 0:2 / /other rw - cifs //192.0.2.11/other rw\n'
+                '4 0 0:3 / /auto rw - autofs systemd-1 rw\n')
+        self.assertEqual(collector.nas_mounts(text), [{'path': '/home/alice/n-data', 'share': 'fixture-share'}])
+        self.assertEqual(collector.nas_mounts(''), [])
+
+    def test_network_timeout_and_absent_tools_degrade_independently(self):
+        with patch('collector.socket.create_connection', side_effect=TimeoutError):
+            self.assertEqual(collector.web_port('198.51.100.20'), {'reachable': False, 'connectMs': None})
+        with patch('collector.subprocess.run', side_effect=FileNotFoundError):
+            self.assertEqual(collector.command(['missing']), '')
+        with patch('collector.command', return_value=''), patch('collector.read', return_value=''), \
+             patch('collector.web_port', return_value={'reachable': False, 'connectMs': None}):
+            result = collector.network_snapshot()
+        self.assertIsNone(result['gateway'])
+        self.assertEqual(result['dns'], [])
+        self.assertFalse(result['nas']['reachable'])
+
     def test_cpu_does_not_double_count_guest(self):
         self.assertEqual(collector.cpu_snapshot("cpu 10 2 3 50 5 1 2 7 8 1\n"),
                          {"total": 80, "idle": 55})
@@ -47,8 +87,58 @@ class CollectorTests(unittest.TestCase):
         self.assertIn("/a b", collector.mounts_snapshot(text))
         stat = SimpleNamespace(f_blocks=100, f_bfree=30, f_bavail=30, f_frsize=1024)
         result = collector.storage_snapshot(text, "/home/alice", lambda _path: stat)
-        self.assertEqual([item["name"] for item in result["volatile"]], ["Home", "Root"])
-        self.assertEqual(result["persistent"][3]["status"], "unmounted")
+        self.assertEqual([item["name"] for item in result["volatile"]], ["Root", "Home"])
+        self.assertEqual([item["path"] for item in result["persistent"]],
+                         ["/p-home", "/p-data", "/p-shared", "/p-os"])
+        self.assertEqual(result["persistent"][2]["status"], "unmounted")
+
+    def test_threads_follow_physical_topology_not_cpu_number(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cpus = Path(directory)
+            text = ""
+            for cpu, core in [(0, 0), (1, 8), (12, 0), (13, 8)]:
+                topology = cpus / f"cpu{cpu}" / "topology"
+                topology.mkdir(parents=True)
+                (topology / "core_id").write_text(str(core))
+                (topology / "physical_package_id").write_text("0")
+                text += f"cpu{cpu} 10 2 3 50 5 1 2 7 8 1\n"
+            result = collector.cpu_threads_snapshot(text, cpus)
+            self.assertEqual([t["id"] for t in result], [0, 12, 1, 13])
+            self.assertTrue(all(t["total"] == 80 and t["idle"] == 55 for t in result))
+
+    def test_gpu_metrics_validate_version_size_and_unavailable_counters(self):
+        data = bytearray(120)
+        struct.pack_into("<HBB", data, 0, 120, 1, 3)
+        struct.pack_into("<3H", data, 16, 25, 0, 65535)
+        self.assertEqual(collector.gpu_metrics(data), {"busy": 25, "memoryBusy": 0, "videoBusy": None})
+        self.assertEqual(collector.gpu_metrics(data[:21]), {})
+        self.assertEqual(collector.gpu_metrics(data[:22]), {})
+        data[3] = 4  # Later layouts have different offsets; do not guess.
+        self.assertEqual(collector.gpu_metrics(data), {})
+        data[2:4] = bytes([2, 1])
+        self.assertEqual(collector.gpu_metrics(data), {})
+
+    def test_cpu_power_uses_raphael_soc_not_discrete_gpu(self):
+        with tempfile.TemporaryDirectory() as directory:
+            hwmon = Path(directory)
+            for number, name, device, power in [(2, "k10temp", "", None),
+                                               (8, "amdgpu", "0x744c", 250000000),
+                                               (9, "amdgpu", "0x164e", 35000000)]:
+                sensor = hwmon / f"hwmon{number}"
+                (sensor / "device").mkdir(parents=True)
+                (sensor / "name").write_text(name)
+                (sensor / "device/device").write_text(device)
+                (sensor / "temp1_input").write_text("47000")
+                if power is not None:
+                    (sensor / "power1_input").write_text(str(power))
+            result = collector.cpu_sensors(hwmon, "AMD Ryzen 9 7900 12-Core Processor")
+            self.assertEqual(result["power"], 35)
+            self.assertEqual(result["temperature"], 47)
+            self.assertEqual(result["temperatureLimit"], 95)
+            self.assertEqual(result["powerScale"], 100)
+            (hwmon / "hwmon9/power1_input").unlink()
+            self.assertIsNone(collector.cpu_sensors(hwmon, "AMD Ryzen 9 7900X")["power"])
+            self.assertIsNone(collector.cpu_sensors(hwmon, "AMD Ryzen 9 7900X")["temperatureLimit"])
 
     def test_gpu_prefers_discrete_card_not_card_zero(self):
         with tempfile.TemporaryDirectory() as directory:

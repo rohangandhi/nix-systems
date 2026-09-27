@@ -3,6 +3,6 @@
   "name": "System Resources",
   "description": "CPU, Radeon GPU, memory consumers, and persistent and volatile storage in a native GNOME menu.",
   "shell-version": ["50"],
-  "version": 2,
+  "version": 3,
   "session-modes": ["user"]
 }

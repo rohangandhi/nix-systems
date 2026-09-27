@@ -4,6 +4,11 @@ let
   palette = theme.colors;
   colors = builtins.mapAttrs (_: hex: "#${hex}") palette;
   systemResources = import ./gnome-extensions/system-resources/package.nix { inherit pkgs; };
+  shellThemeName = "shared-${theme.palette}";
+  shellTheme = import ./gnome-shell-theme.nix {
+    inherit pkgs colors;
+    name = shellThemeName;
+  };
 in {
 
   # GDM 50.3 fixes reuse of systemd's cached LUKS passphrase during autologin.
@@ -33,7 +38,8 @@ in {
   services.gnome.core-apps.enable = false;
   services.gnome.core-developer-tools.enable = false;
   services.gnome.games.enable = false;
-  environment.systemPackages = [ pkgs.gnome-console pkgs.nautilus pkgs.gnome-keyring systemResources ];
+  environment.systemPackages = [ pkgs.gnome-console pkgs.nautilus pkgs.gnome-keyring systemResources ]
+    ++ lib.optionals theme.enabled [ pkgs.gnomeExtensions.user-themes shellTheme ];
   environment.gnome.excludePackages = [ pkgs.gnome-tour pkgs.gnome-user-docs ];
   
   programs.dconf.profiles.gdm.databases = [{
@@ -143,8 +149,13 @@ in {
     dconf.enable = true;
     dconf.settings."org/gnome/shell" = {
       disable-user-extensions = false;
-      enabled-extensions = [ systemResources.extensionUuid ];
+      enabled-extensions = [ systemResources.extensionUuid ]
+        ++ lib.optional theme.enabled pkgs.gnomeExtensions.user-themes.extensionUuid;
     };
+    # Explicitly clear the selection when disabled, including mutable dconf
+    # state retained from a previous palette. Disabling User Themes unloads it.
+    dconf.settings."org/gnome/shell/extensions/user-theme".name =
+      if theme.enabled then shellThemeName else "";
     dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
     # GNOME Shell accepts named accents, not arbitrary RGB palette colors.
     dconf.settings."org/gnome/desktop/interface".accent-color = lib.mkIf theme.enabled theme.gnomeAccent;

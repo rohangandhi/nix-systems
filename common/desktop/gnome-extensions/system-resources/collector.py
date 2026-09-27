@@ -5,13 +5,115 @@ Application detail uses PSS (shared pages divided among the processes using them
 """
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+import ipaddress
 import json
 import os
 from pathlib import Path
 import re
+import struct
+import socket
+import subprocess
+import time
 
 
-PERSISTENT = ("/p-os", "/p-home", "/p-data", "/p-shared")
+PERSISTENT = ("/p-home", "/p-data", "/p-shared", "/p-os")
+NAS = "192.0.2.108"
+ROUTER = "192.0.2.1"
+
+
+def command(argv):
+    try:
+        return subprocess.run(argv, capture_output=True, text=True, check=True,
+                              timeout=0.8, env={**os.environ, "LC_ALL": "C"}).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def default_route(text):
+    try:
+        routes = json.loads(text)
+    except (ValueError, TypeError):
+        return {}
+    candidates = [route for route in routes if route.get("dst") == "default"
+                  and route.get("dev") and route.get("type", "unicast") == "unicast"]
+    return min(candidates, key=lambda route: route.get("metric", 0), default={})
+
+
+def network_devices(text):
+    """nmcli terse output, with escaping disabled so IPv6 stays intact."""
+    devices, current = {}, None
+    for line in text.splitlines():
+        key, separator, value = line.partition(":")
+        if not separator:
+            continue
+        if key == "GENERAL.DEVICE":
+            current = devices.setdefault(value, {})
+        elif current is not None and value:
+            current.setdefault(key.split("[")[0], []).append(value)
+    return devices
+
+
+def dns_servers(text):
+    servers = []
+    for line in text.splitlines():
+        fields = line.split("#", 1)[0].split(";", 1)[0].split()
+        if len(fields) >= 2 and fields[0] == "nameserver":
+            try:
+                ipaddress.ip_address(fields[1])
+            except ValueError:
+                continue
+            if fields[1] not in servers:
+                servers.append(fields[1])
+    return servers
+
+
+def nas_mounts(text, host=NAS):
+    """Inspect the mount table only; never touch/automount an offline share."""
+    shares = []
+    for line in text.splitlines():
+        before, separator, after = line.partition(" - ")
+        fields, fs = before.split(), after.split()
+        if not separator or len(fields) < 6 or len(fs) < 2 or fs[0] != "cifs":
+            continue
+        source = unescape_mount(fs[1])
+        if source.startswith(f"//{host}/") and fields[3] == "/":
+            shares.append({"path": unescape_mount(fields[4]), "share": source.split("/", 3)[3]})
+    return shares
+
+
+def web_port(host):
+    """A bounded TCP handshake, not a ping, TLS check, or device health check."""
+    start = time.monotonic()
+    try:
+        with socket.create_connection((host, 443), timeout=0.6):
+            return {"reachable": True, "connectMs": round((time.monotonic() - start) * 1000, 1)}
+    except OSError:
+        return {"reachable": False, "connectMs": None}
+
+
+def network_snapshot():
+    route = default_route(command(["@ip@", "-j", "route", "show", "default"]))
+    if not route:
+        route = default_route(command(["@ip@", "-j", "-6", "route", "show", "default"]))
+    devices = network_devices(command(["@nmcli@", "--terse", "--escape", "no", "--fields",
+        "GENERAL.DEVICE,GENERAL.STATE,IP4.ADDRESS,IP4.DNS,IP6.ADDRESS,IP6.DNS", "device", "show"]))
+    interface = route.get("dev")
+    device = devices.get(interface, {})
+    addresses = device.get("IP4.ADDRESS", []) + device.get("IP6.ADDRESS", [])
+    servers = dns_servers(read("/etc/resolv.conf"))
+    # With a local stub, expose NM's configured upstreams in the tooltip only.
+    # Split DNS/VPN routing can select a different server for each query.
+    upstream = list(dict.fromkeys(server for config in devices.values()
+        if any(state.startswith("100 ") for state in config.get("GENERAL.STATE", []))
+        for server in config.get("IP4.DNS", []) + config.get("IP6.DNS", [])))
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        nas, router = list(pool.map(web_port, [NAS, ROUTER]))
+    return {"interface": interface, "address": addresses[0] if addresses else route.get("prefsrc"),
+            "gateway": route.get("gateway"), "dns": servers, "upstreamDns": upstream,
+            "nas": {"address": NAS, "url": f"https://{NAS}", **nas,
+                    "mounts": nas_mounts(read("/proc/self/mountinfo"))},
+            "router": {"address": ROUTER, "url": f"https://{ROUTER}/", **router}}
 
 
 def read(path):
@@ -40,6 +142,61 @@ def cpu_snapshot(text):
         return None
     # Guest/guest_nice are already included in user/nice; do not count twice.
     return {"total": sum(values), "idle": values[3] + values[4]}
+
+
+def cpu_threads_snapshot(text, cpus=Path("/sys/devices/system/cpu")):
+    threads = []
+    for line in text.splitlines():
+        match = re.match(r"cpu(\d+)\s", line)
+        if not match:
+            continue
+        cpu = int(match[1])
+        topology = cpus / f"cpu{cpu}" / "topology"
+        core = integer(topology / "core_id")
+        package = integer(topology / "physical_package_id")
+        counters = cpu_snapshot(re.sub(r"^cpu\d+", "cpu", line))
+        if counters:
+            # Missing topology must not incorrectly combine unrelated CPUs.
+            threads.append({"id": cpu, "core": core if core is not None else cpu,
+                            "package": package if package is not None else 0, **counters})
+    return sorted(threads, key=lambda item: (item["package"], item["core"], item["id"]))
+
+
+def scaled(path, divisor):
+    value = integer(path)
+    return value / divisor if value is not None and value >= 0 else None
+
+
+def cpu_sensors(hwmon=Path("/sys/class/hwmon"), cpuinfo=None):
+    result = {"temperature": None, "temperatureLimit": None, "power": None,
+              "powerScale": None}
+    cpuinfo = read("/proc/cpuinfo") if cpuinfo is None else cpuinfo
+    # This host's documented Tjmax; powerScale is a visual reference, NOT a cap.
+    if re.search(r"AMD Ryzen 9 7900(?:\s|$)", cpuinfo):
+        result.update(temperatureLimit=95, powerScale=100)
+    for sensor in sorted(hwmon.glob("hwmon*")):
+        name = read(sensor / "name").strip()
+        if name == "k10temp" and result["temperature"] is None:
+            result["temperature"] = scaled(sensor / "temp1_input", 1000)
+            result["temperatureLimit"] = scaled(sensor / "temp1_crit", 1000) or result["temperatureLimit"]
+        # Raphael's integrated GPU exports package/SoC PPT, including CPU power.
+        # Do not mistake an arbitrary AMD discrete GPU's power for CPU power.
+        if name == "amdgpu" and read(sensor / "device/device").strip() == "0x164e":
+            result["power"] = scaled(sensor / "power1_input", 1_000_000)
+    return result
+
+
+def gpu_metrics(data):
+    """The documented common prefix of AMD gpu_metrics v1.1–v1.3 only."""
+    if len(data) < 22:
+        return {}
+    size, major, minor = struct.unpack_from("<HBB", data)
+    if size > len(data) or size < 22 or major != 1 or minor not in (1, 2, 3):
+        return {}
+    values = struct.unpack_from("<3H", data, 16)
+    # 0xffff is unsupported. Never present it (or other invalid data) as 100%.
+    return {key: value if 0 <= value <= 100 else None
+            for key, value in zip(("busy", "memoryBusy", "videoBusy"), values)}
 
 
 def memory_snapshot(text):
@@ -88,7 +245,7 @@ def filesystem(path, mounts, statvfs=os.statvfs):
 def storage_snapshot(mount_text, home, statvfs=os.statvfs):
     mounts = mounts_snapshot(mount_text)
     persistent = [filesystem(path, mounts, statvfs) for path in PERSISTENT]
-    candidates = [(home, "Home"), ("/", "Root")]
+    candidates = [("/", "Root"), (home, "Home")]
     volatile, seen = [], set()
     for path, name in candidates:
         mount = mounts.get(path)
@@ -99,7 +256,7 @@ def storage_snapshot(mount_text, home, statvfs=os.statvfs):
     return {"persistent": persistent, "volatile": volatile}
 
 
-def gpu_snapshot(drm=Path("/sys/class/drm")):
+def gpu_snapshot(drm=Path("/sys/class/drm"), details=False):
     cards = []
     for card in drm.glob("card[0-9]*"):
         if not re.fullmatch(r"card\d+", card.name):
@@ -115,9 +272,31 @@ def gpu_snapshot(drm=Path("/sys/class/drm")):
     # This host has both an integrated AMD GPU and a discrete Radeon.
     total, device = max(cards, key=lambda pair: pair[0])
     pci = re.search(r"^PCI_SLOT_NAME=(.+)$", read(device / "uevent"), re.MULTILINE)
-    return {"card": device.parent.name, "busy": integer(device / "gpu_busy_percent"),
-            "total": total, "used": integer(device / "mem_info_vram_used"),
-            "pci": pci[1] if pci else None}
+    result = {"card": device.parent.name, "busy": integer(device / "gpu_busy_percent"),
+              "total": total, "used": integer(device / "mem_info_vram_used"),
+              "pci": pci[1] if pci else None}
+    if details:
+        try:
+            metrics = gpu_metrics((device / "gpu_metrics").read_bytes())
+        except OSError:
+            metrics = {}
+        memory_busy = integer(device / "mem_busy_percent")
+        result.update(memoryBusy=memory_busy if memory_busy is not None else metrics.get("memoryBusy"),
+                      videoBusy=metrics.get("videoBusy"), temperature=None,
+                      temperatureLimit=None, power=None, powerLimit=None, name="Radeon")
+        if result["busy"] is None:
+            result["busy"] = metrics.get("busy")
+        if read(device / "device").strip() == "0x744c" and 19 * 1024 ** 3 < total < 21 * 1024 ** 3:
+            result["name"] = "RX 7900 XT"
+        for sensor in sorted((device / "hwmon").glob("hwmon*")):
+            if read(sensor / "name").strip() != "amdgpu":
+                continue
+            result.update(temperature=scaled(sensor / "temp1_input", 1000),
+                          temperatureLimit=scaled(sensor / "temp1_crit", 1000),
+                          power=scaled(sensor / "power1_average", 1_000_000),
+                          powerLimit=scaled(sensor / "power1_cap", 1_000_000))
+            break
+    return result
 
 
 def drm_memory(value):
@@ -208,7 +387,7 @@ def applications_snapshot(proc=Path("/proc"), uid=None, gpu_pci=None):
         share = client["bytes"] / len(client["groups"])
         for key in client["groups"]:
             gpu_groups[key]["bytes"] += share
-    top = lambda items: sorted(items, key=lambda item: item["bytes"], reverse=True)[:5]
+    top = lambda items: sorted(items, key=lambda item: item["bytes"], reverse=True)[:3]
     return {"items": top(groups.values()), "omitted": omitted,
             "vramItems": top(item for item in gpu_groups.values() if item["bytes"] > 0),
             "vramStatus": "ok" if clients else "unavailable"}
@@ -218,13 +397,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--storage", action="store_true")
     parser.add_argument("--applications", action="store_true")
+    parser.add_argument("--network", action="store_true")
     args = parser.parse_args()
-    result = {"cpu": cpu_snapshot(read("/proc/stat")),
-              "memory": memory_snapshot(read("/proc/meminfo")), "gpu": gpu_snapshot()}
+    if args.network:
+        print(json.dumps(network_snapshot(), allow_nan=False, separators=(",", ":")))
+        return
+    cpu_text = read("/proc/stat")
+    result = {"cpu": cpu_snapshot(cpu_text),
+              "memory": memory_snapshot(read("/proc/meminfo")),
+              "gpu": gpu_snapshot(details=args.applications)}
     if args.storage:
         result["storage"] = storage_snapshot(read("/proc/self/mountinfo"),
                                              str(Path.home()))
     if args.applications:
+        result["threads"] = cpu_threads_snapshot(cpu_text)
+        result["cpuSensors"] = cpu_sensors()
         result["applications"] = applications_snapshot(gpu_pci=result["gpu"]["pci"] if result["gpu"] else None)
     print(json.dumps(result, allow_nan=False, separators=(",", ":")))
 
