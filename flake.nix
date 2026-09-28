@@ -86,6 +86,7 @@
         ./matrix/one/commands.nix
 
         # Miscellaneous applications
+        ./common/apps/loupe.nix
         ./common/apps/container.nix
         ./common/apps/git.nix
         ./common/apps/app-image.nix
@@ -136,6 +137,7 @@
         ./common/apps/development/codex.nix
         ./common/apps/steam.nix
         ./matrix/one/commands.nix
+        ./common/apps/loupe.nix
         ./common/apps/container.nix
         ./common/apps/git.nix
         ./common/apps/app-image.nix
