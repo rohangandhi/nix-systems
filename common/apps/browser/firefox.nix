@@ -28,7 +28,7 @@
       # Use the dedicated policy; privacy.* preferences are not generally allowed.
       SanitizeOnShutdown = {
         Cache = true;
-        Cookies = true;
+        Cookies = false;
         History = false;
         FormData = true;
         Sessions = false;
