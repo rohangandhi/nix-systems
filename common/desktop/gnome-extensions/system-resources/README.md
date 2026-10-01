@@ -17,7 +17,8 @@ Its accessible name includes the labels. The menu fits without a scroll view:
   controller and video engines. Temperature and power occupy the same positions
   as the CPU card, followed by VRAM and its three largest consumers.
 - A full-width **Network** card below CPU/GPU shows system DNS servers, the
-  configured NAS at `192.0.2.108`, and the configured router at `192.0.2.1`.
+  configured NAS and router. Set `my-machine.nasAddress` and
+  `my-machine.routerAddress` in the private host module; unset devices are not probed.
   Its header shows the default-route interface and local address. NAS/router
   buttons open their HTTPS interfaces. Hover/focus reveals TCP connection time,
   mounted SMB share paths, and the current default gateway.

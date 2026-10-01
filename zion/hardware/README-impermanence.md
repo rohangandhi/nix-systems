@@ -43,7 +43,7 @@ working path mirrored beneath the storage root. These shortcuts do not change
 permissions; accessing root-owned system files still requires appropriate access.
 
 `n-data` remains a CIFS automount at `/home/ephemeral/n-data`, backed by
-`//192.0.2.108/zion`. Systemd orders the automount after the home filesystem and
+the private `my-machine.networkShare` setting. Systemd orders the automount after the home filesystem and
 the actual CIFS mount after `network-online.target`. Reading a file triggers the
 mount. Both GNOME wallpaper settings keep their existing `file:///home/ephemeral/n-data/wallpapers/...`
 paths; they do not move into `/p-home`. Access still requires the network server

@@ -133,8 +133,8 @@ in {
 
     # Shared model weights and Windows files on the Samsung 990 PRO 2TB.
     # Managed separately from disko: preserve Windows and the existing NTFS data.
-    "/p-shared" = {
-      device = "/dev/disk/by-uuid/0000000000000001";
+    "/p-shared" = lib.mkIf (config.my-machine.sharedDiskUuid != null) {
+      device = "/dev/disk/by-uuid/${config.my-machine.sharedDiskUuid}";
       fsType = "ntfs3";
       options = [
         "nosuid" "nodev" "windows_names"
@@ -160,7 +160,7 @@ in {
         gid = "${toString my-options.group.gid}";
       in
       {
-        device = "//192.0.2.108/zion";
+        device = config.my-machine.networkShare;
         fsType = "cifs";
         options = [ "${automount_opts},uid=${uid},gid=${gid}" "x-gvfs-hide" ];
       };
@@ -168,10 +168,9 @@ in {
 
   # Files uses the named bookmarks for data mounts. Hide unrelated Windows
   # volumes by filesystem UUID, leaving removable drives discoverable.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="block", ENV{ID_FS_UUID}=="0000000000000002", ENV{UDISKS_IGNORE}="1"
-    SUBSYSTEM=="block", ENV{ID_FS_UUID}=="0000000000000003", ENV{UDISKS_IGNORE}="1"
-  '';
+  services.udev.extraRules = lib.concatMapStringsSep "\n" (uuid:
+    ''SUBSYSTEM=="block", ENV{ID_FS_UUID}=="${uuid}", ENV{UDISKS_IGNORE}="1"''
+  ) config.my-machine.hiddenDiskUuids;
 
   environment.systemPackages = [
     pkgs.cifs-utils

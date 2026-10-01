@@ -5,6 +5,33 @@
   };
 
   options = {
+    my-machine = {
+      nasAddress = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "NAS address for the resource menu.";
+      };
+      routerAddress = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Router address for the resource menu.";
+      };
+      networkShare = lib.mkOption {
+        type = lib.types.str;
+        default = "//nas.example.invalid/share";
+        description = "SMB source; override in the private host configuration.";
+      };
+      sharedDiskUuid = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Existing shared NTFS filesystem UUID; null disables the mount.";
+      };
+      hiddenDiskUuids = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        description = "Filesystem UUIDs to hide from Files.";
+      };
+    };
     my-options = {
       name = lib.mkOption { type = lib.types.str; };
       display = {

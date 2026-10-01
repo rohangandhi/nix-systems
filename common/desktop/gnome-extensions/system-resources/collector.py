@@ -18,8 +18,15 @@ import time
 
 
 PERSISTENT = ("/p-home", "/p-data", "/p-shared", "/p-os")
-NAS = "192.0.2.108"
-ROUTER = "192.0.2.1"
+
+
+def network_config():
+    try:
+        data = json.loads(read("/etc/system-resources-network.json"))
+        return {key: data.get(key) if isinstance(data.get(key), str) else None
+                for key in ("nas", "router")}
+    except (ValueError, AttributeError):
+        return {"nas": None, "router": None}
 
 
 def command(argv):
@@ -68,7 +75,7 @@ def dns_servers(text):
     return servers
 
 
-def nas_mounts(text, host=NAS):
+def nas_mounts(text, host):
     """Inspect the mount table only; never touch/automount an offline share."""
     shares = []
     for line in text.splitlines():
@@ -84,6 +91,8 @@ def nas_mounts(text, host=NAS):
 
 def web_port(host):
     """A bounded TCP handshake, not a ping, TLS check, or device health check."""
+    if not host:
+        return {"reachable": None, "connectMs": None}
     start = time.monotonic()
     try:
         with socket.create_connection((host, 443), timeout=0.6):
@@ -107,13 +116,15 @@ def network_snapshot():
     upstream = list(dict.fromkeys(server for config in devices.values()
         if any(state.startswith("100 ") for state in config.get("GENERAL.STATE", []))
         for server in config.get("IP4.DNS", []) + config.get("IP6.DNS", [])))
+    targets = network_config()
+    NAS, ROUTER = targets["nas"], targets["router"]
     with ThreadPoolExecutor(max_workers=2) as pool:
         nas, router = list(pool.map(web_port, [NAS, ROUTER]))
     return {"interface": interface, "address": addresses[0] if addresses else route.get("prefsrc"),
             "gateway": route.get("gateway"), "dns": servers, "upstreamDns": upstream,
-            "nas": {"address": NAS, "url": f"https://{NAS}", **nas,
-                    "mounts": nas_mounts(read("/proc/self/mountinfo"))},
-            "router": {"address": ROUTER, "url": f"https://{ROUTER}/", **router}}
+            "nas": {"address": NAS, "url": f"https://{NAS}" if NAS else None, **nas,
+                    "mounts": nas_mounts(read("/proc/self/mountinfo"), NAS) if NAS else []},
+            "router": {"address": ROUTER, "url": f"https://{ROUTER}/" if ROUTER else None, **router}}
 
 
 def read(path):

@@ -25,6 +25,11 @@ in {
     else prev.gdm;
   }) ];
 
+  environment.etc."system-resources-network.json".text = builtins.toJSON {
+    nas = config.my-machine.nasAddress;
+    router = config.my-machine.routerAddress;
+  };
+
   services.displayManager.gdm.enable = true;
   # services.displayManager.gdm.wayland = true;
   services.desktopManager.gnome.enable = true;

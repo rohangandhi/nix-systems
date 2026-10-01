@@ -38,8 +38,8 @@ class CollectorTests(unittest.TestCase):
                 '2 0 0:1 /nix /workspace rw - cifs //192.0.2.10/fixture-share rw\n'
                 '3 0 0:2 / /other rw - cifs //192.0.2.11/other rw\n'
                 '4 0 0:3 / /auto rw - autofs systemd-1 rw\n')
-        self.assertEqual(collector.nas_mounts(text), [{'path': '/home/alice/n-data', 'share': 'fixture-share'}])
-        self.assertEqual(collector.nas_mounts(''), [])
+        self.assertEqual(collector.nas_mounts(text, "192.0.2.10"), [{'path': '/home/alice/n-data', 'share': 'fixture-share'}])
+        self.assertEqual(collector.nas_mounts('', '192.0.2.10'), [])
 
     def test_network_timeout_and_absent_tools_degrade_independently(self):
         with patch('collector.socket.create_connection', side_effect=TimeoutError):
@@ -47,11 +47,21 @@ class CollectorTests(unittest.TestCase):
         with patch('collector.subprocess.run', side_effect=FileNotFoundError):
             self.assertEqual(collector.command(['missing']), '')
         with patch('collector.command', return_value=''), patch('collector.read', return_value=''), \
-             patch('collector.web_port', return_value={'reachable': False, 'connectMs': None}):
+             patch('collector.web_port', return_value={'reachable': False, 'connectMs': None}), \
+             patch('collector.network_config', return_value={'nas': '192.0.2.10', 'router': '198.51.100.20'}):
             result = collector.network_snapshot()
         self.assertIsNone(result['gateway'])
         self.assertEqual(result['dns'], [])
         self.assertFalse(result['nas']['reachable'])
+
+    def test_unconfigured_network_devices_are_not_probed(self):
+        with patch('collector.socket.create_connection') as connect:
+            self.assertEqual(collector.web_port(None), {'reachable': None, 'connectMs': None})
+            connect.assert_not_called()
+        with patch('collector.read', return_value='invalid'):
+            self.assertEqual(collector.network_config(), {'nas': None, 'router': None})
+        with patch('collector.read', return_value='{"nas":"192.0.2.10","router":null}'):
+            self.assertEqual(collector.network_config(), {'nas': '192.0.2.10', 'router': None})
 
     def test_cpu_does_not_double_count_guest(self):
         self.assertEqual(collector.cpu_snapshot("cpu 10 2 3 50 5 1 2 7 8 1\n"),

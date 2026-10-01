@@ -196,7 +196,7 @@ export default class SystemResources extends Extension {
             : 'System DNS servers · Unavailable');
         for (const [name, device] of [['NAS', data?.nas], ['Router', data?.router]]) {
             const entry = entries[name];
-            entry.url = device?.url ?? (name === 'NAS' ? 'https://192.0.2.108' : 'https://192.0.2.1/');
+            entry.url = device?.url ?? null;
             entry.value.text = device?.address ?? '—';
             const status = device?.reachable === true ? 'Reachable'
                 : device?.reachable === false ? 'No response' : 'Unavailable';
@@ -209,8 +209,8 @@ export default class SystemResources extends Extension {
             const more = name === 'NAS' ? (mounts.length
                 ? mounts.map(mount => `SMB ${mount.share} · ${mount.path}`).join('\n') : 'No mounted SMB share')
                 : `Default gateway: ${data?.gateway ?? 'Unavailable'}`;
-            this._tooltips.set(entry.actor, `${name === 'NAS' ? 'configured NAS' : 'configured router'}\n` +
-                `${connection}\n${more}\nOpen ${entry.url}`);
+            this._tooltips.set(entry.actor, `${name}\n` +
+                `${connection}\n${more}\n${entry.url ? `Open ${entry.url}` : 'No device configured'}`);
         }
     }
 

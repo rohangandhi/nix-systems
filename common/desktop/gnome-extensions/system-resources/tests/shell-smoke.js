@@ -60,6 +60,10 @@ export async function run() {
     }
     const cpu = instance._cpu;
     const gpu = instance._gpu;
+    const networkFixture = {dns: ['192.0.2.53'], interface: 'eno1',
+        nas: {address: '192.0.2.10', url: 'https://192.0.2.10', reachable: true, connectMs: 1, mounts: []},
+        router: {address: '198.51.100.20', url: 'https://198.51.100.20/', reachable: true, connectMs: 1}};
+    instance._updateNetwork(networkFixture);
     const network = instance._network;
     assert(network.entries.DNS.value.text !== '—', 'DNS was not collected');
     assert(network.entries.NAS.value.text === '192.0.2.10', 'NAS address missing');
@@ -200,6 +204,7 @@ export async function run() {
     let uri = null;
     Gio.AppInfo.launch_default_for_uri_async = value => { uri = value; };
     try {
+        instance._updateNetwork(networkFixture);
         network.entries.NAS.actor.emit('clicked', 1);
         assert(uri === 'https://192.0.2.10', 'NAS did not open its web interface');
         instance._indicator.menu.open();
