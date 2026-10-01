@@ -63,6 +63,21 @@ in {
     }
   ];
   home-manager.users.${my-options.user.name} = { pkgs, ... }: {
+    # Files supplies Home itself. Keep Downloads and the storage roots as its
+    # folder bookmarks, independently of the selected desktop palette.
+    xdg.configFile."gtk-3.0/bookmarks" = {
+      force = true;
+      text = ''
+        file:/// Root
+        file:///home/${my-options.user.name}/Downloads Downloads
+        file:///p-home p-home
+        file:///p-data p-data
+        file:///home/${my-options.user.name}/n-data n-data
+        file:///p-shared p-shared
+        file:///p-os p-os
+      '';
+    };
+
     gtk = lib.mkIf theme.enabled {
       enable = true;
       gtk2.enable = false;

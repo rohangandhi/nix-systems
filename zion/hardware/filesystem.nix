@@ -128,6 +128,7 @@ in {
     # Data Setup
     "/p-data" = {
       neededForBoot = false;
+      options = [ "x-gvfs-hide" ];
     };
 
     # Shared model weights and Windows files on the Samsung 990 PRO 2TB.
@@ -147,7 +148,7 @@ in {
     "/home/${my-options.user.name}/p-data" = {
       device = "/p-data";
       fsType = "none";
-      options = [ "bind" ];
+      options = [ "bind" "x-gvfs-hide" ];
       depends = [ "/p-data" ];
     };
 
@@ -161,10 +162,16 @@ in {
       {
         device = "//192.0.2.108/zion";
         fsType = "cifs";
-        options = [ "${automount_opts},uid=${uid},gid=${gid}" ];
+        options = [ "${automount_opts},uid=${uid},gid=${gid}" "x-gvfs-hide" ];
       };
   };
 
+  # Files uses the named bookmarks for data mounts. Hide unrelated Windows
+  # volumes by filesystem UUID, leaving removable drives discoverable.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="block", ENV{ID_FS_UUID}=="0000000000000002", ENV{UDISKS_IGNORE}="1"
+    SUBSYSTEM=="block", ENV{ID_FS_UUID}=="0000000000000003", ENV{UDISKS_IGNORE}="1"
+  '';
 
   environment.systemPackages = [
     pkgs.cifs-utils
