@@ -179,9 +179,10 @@ in {
     "L /persist/data - - - - /p-data"
     "L /persist/shared - - - - /p-shared"
     "L /home/${my-options.user.name}/p-shared - - - - /p-shared"
+    "d /p-data/application 0755 ${my-options.user.name} ${my-options.group.name} -"
     # The default Steam library is large; keep it off the home filesystem.
-    "d /p-data/steam 0700 ${my-options.user.name} ${my-options.group.name} -"
-    "d /p-data/steam/steamapps 0700 ${my-options.user.name} ${my-options.group.name} -"
+    "d /p-data/application/steam 0700 ${my-options.user.name} ${my-options.group.name} -"
+    "d /p-data/application/steam/steamapps 0700 ${my-options.user.name} ${my-options.group.name} -"
   ];
 
   # Do not silently create an empty profile when restoring an old-layout backup.
@@ -216,7 +217,7 @@ in {
     # The client and account state stay in encrypted /p-home. Steam follows
     # this link for games, downloaded Proton runtimes, prefixes and shaders.
     home.file.".local/share/Steam/steamapps".source =
-      config.lib.file.mkOutOfStoreSymlink "/p-data/steam/steamapps";
+      config.lib.file.mkOutOfStoreSymlink "/p-data/application/steam/steamapps";
 
     # Fish needs an existing target for its atomic universal-variable writes.
     # Preserve any current settings before Home Manager replaces the local file.

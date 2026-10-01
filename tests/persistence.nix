@@ -97,11 +97,11 @@ inputs.nixpkgs.legacyPackages.x86_64-linux.testers.runNixOSTest {
       def check_steam_library():
           # The VM uses disposable /p-data; verify placement and user access
           # on each boot, while the Steam profile below survives on /p-home.
-          machine.succeed("test $(readlink -f /home/ephemeral/.local/share/Steam/steamapps) = /p-data/steam/steamapps")
-          machine.succeed("test $(stat -c %u:%g /p-data/steam/steamapps) = 1000:999")
-          machine.succeed("test $(stat -c %a /p-data/steam/steamapps) = 700")
+          machine.succeed("test $(readlink -f /home/ephemeral/.local/share/Steam/steamapps) = /p-data/application/steam/steamapps")
+          machine.succeed("test $(stat -c %u:%g /p-data/application/steam/steamapps) = 1000:999")
+          machine.succeed("test $(stat -c %a /p-data/application/steam/steamapps) = 700")
           machine.succeed("runuser -u ephemeral -- install -Dm755 /run/current-system/sw/bin/true /home/ephemeral/.local/share/Steam/steamapps/test-bin/true")
-          machine.succeed("runuser -u ephemeral -- /p-data/steam/steamapps/test-bin/true")
+          machine.succeed("runuser -u ephemeral -- /p-data/application/steam/steamapps/test-bin/true")
 
       server.start()
       server.wait_for_unit("samba.target")

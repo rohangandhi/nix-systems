@@ -22,7 +22,7 @@ Feature files contain settings; `flake.nix` selects them explicitly.
 | Terminal | Alacritty starts Fish with Starship; tmux is optional. Terminals use Noto Sans Mono Nerd Font, while GNOME keeps its upstream font defaults. |
 | Editor | VSCodium with writable settings, Nix IDE, Svelte, and `nil`/`nixfmt` for Nix editing. |
 | Codex | Desktop application and CLI, selected through [codex.nix](common/apps/development/codex.nix). |
-| Games | Steam with Valve's Proton; the default game library lives under `/p-data/steam/steamapps`. |
+| Games | Steam with Valve's Proton; the default game library lives under `/p-data/application/steam/steamapps`. |
 | Colors | Shared Midnight Jade palette, with Nord or native application colors available through `my-theme.palette`. |
 | Isolation | The `matrix-one` development VM and rootless Podman. Container storage lives under `/p-data/containers/storage`. |
 | Persistence | Root and home use tmpfs; selected state lives under `/p-os` and `/p-home/home/ephemeral`. Browse all persistent roots through `/persist`. |
@@ -126,7 +126,7 @@ Remote Play, dedicated-server, and LAN-transfer firewall openings remain disable
 
 The host's [filesystem module](zion/hardware/filesystem.nix) persists `~/.steam`
 and `~/.local/share/Steam` in encrypted `/p-home`. The default library's
-`steamapps` directory is linked to `/p-data/steam/steamapps`, so games, downloaded
+`steamapps` directory is linked to `/p-data/application/steam/steamapps`, so games, downloaded
 Proton runtimes, Windows compatibility prefixes, and shader caches use the data
 filesystem automatically. No extra library needs to be selected in Steam.
 `/p-data` is unencrypted; saves inside Proton prefixes live there too.
